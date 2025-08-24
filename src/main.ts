@@ -32,6 +32,7 @@ async function loadPalettes() {
 }
 
 window.addEventListener("DOMContentLoaded", async () => {
+  // Ensure dragging works on overlay titlebar for all platforms
   const dropzone = qs<HTMLDivElement>("#dropzone");
   const fileInput = qs<HTMLInputElement>("#file");
   const thumb = qs<HTMLImageElement>("#thumb");
@@ -65,7 +66,8 @@ window.addEventListener("DOMContentLoaded", async () => {
   }
 
   function updateButtons() {
-    enable(btnGen, !!selectedImage);
+    // Allow Pixelate click to prompt for file when no image
+    enable(btnGen, true);
     enable(btnUpscaled, !!upscaledDataURL);
     enable(btnBase, !!baseDataURL);
   }
@@ -104,15 +106,20 @@ window.addEventListener("DOMContentLoaded", async () => {
   });
 
   btnGen?.addEventListener("click", async () => {
-    if (!selectedImage) return;
+    if (!selectedImage) {
+      fileInput?.click();
+      return;
+    }
     if (!algoSel || !gridSel || !paletteSel) return;
     enable(btnGen, false);
     try {
+      const displaySize = 640; // UI preview target; Rust will snap to integer multiples
       const req = {
         image_data_url: selectedImage,
         grid_size: Number(gridSel.value),
         algorithm: algoSel.value,
         palette_name: paletteSel.value,
+        display_size: displaySize,
       };
       const up = (await invoke("render_preview", { req })) as string;
       const base = (await invoke("render_base", { req })) as string;

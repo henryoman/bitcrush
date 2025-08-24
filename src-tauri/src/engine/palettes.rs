@@ -2,6 +2,7 @@ use crate::engine::color::hex_to_rgb;
 use std::fs;
 use tauri::path::BaseDirectory;
 use tauri::Manager;
+use std::path::PathBuf;
 
 #[derive(Debug, Clone)]
 pub struct Palette {
@@ -35,10 +36,24 @@ fn parse_gpl(contents: &str, fallback_name: &str) -> Option<Palette> {
     let mut name: Option<String> = None;
     let mut colors: Vec<[u8;3]> = Vec::new();
     for line in contents.lines() {
-        let line = line.trim();
+        let line = line.trim_start_matches('\u{FEFF}').trim();
         if line.is_empty() { continue; }
-        if line.starts_with("#Palette Name:") {
-            name = Some(line[14..].trim().to_string());
+        // allow both "#Palette Name:" and "Name:" (with/without leading '#')
+        if line.starts_with('#') {
+            let l = line[1..].trim();
+            if l.starts_with("Palette Name:") {
+                name = Some(l[13..].trim().to_string());
+                continue;
+            }
+            if l.starts_with("Name:") {
+                name = Some(l[5..].trim().to_string());
+                continue;
+            }
+        } else if line.starts_with("Palette Name:") {
+            name = Some(line[13..].trim().to_string());
+            continue;
+        } else if line.starts_with("Name:") {
+            name = Some(line[5..].trim().to_string());
             continue;
         }
         if line.starts_with('#') || line.starts_with("GIMP Palette") { continue; }
@@ -66,11 +81,24 @@ struct TomlPalettes { palette: Option<Vec<TomlPalette>> }
 
 pub fn load_palettes(app: &tauri::AppHandle) -> Vec<Palette> {
     let mut out = built_in_palettes();
-    // Resolve resources path (Resource/palettes)
+    // Resolve Resource/palettes, then target/.../resources/palettes, then compile-time src-tauri/resources/palettes
     let base = app
         .path()
         .resolve("palettes", BaseDirectory::Resource)
-        .ok();
+        .ok()
+        .filter(|p| p.exists())
+        .or_else(|| {
+            app.path()
+                .resource_dir()
+                .ok()
+                .map(|p| p.join("palettes"))
+                .filter(|p| p.exists())
+        })
+        .or_else(|| {
+            let root = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+            let dev = root.join("resources").join("palettes");
+            if dev.exists() { Some(dev) } else { None }
+        });
     if let Some(base_dir) = base {
         // Load TOML
         let toml_path = base_dir.join("palettes.toml");
@@ -116,6 +144,15 @@ pub fn load_palettes(app: &tauri::AppHandle) -> Vec<Palette> {
     out.retain(|p| seen.insert(p.name));
     out.reverse();
     out
+}
+
+pub fn resolve_palette(app: &tauri::AppHandle, name: &str) -> Palette {
+    let all = load_palettes(app);
+    if let Some(p) = all.iter().find(|p| p.name == name) {
+        return Palette { name: p.name, colors: p.colors.clone() };
+    }
+    // fallback built-ins
+    get_palette_by_name(name)
 }
 
 

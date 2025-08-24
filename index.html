@@ -5,35 +5,36 @@
     <link rel="stylesheet" href="https://unpkg.com/terminal.css@0.7.5/dist/terminal.min.css" />
     <link rel="stylesheet" href="/src/styles.css" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Tauri App</title>
+    <title>bitcrush</title>
     <script type="module" src="/src/main.ts" defer></script>
   </head>
 
   <body class="terminal">
-    <main class="container">
-      <div class="row">
-        <a href="https://github.com/henryoman/bitcrush" target="_blank">
-          <img src="/src/assets/bitcrush.png" class="logo bitcrush" alt="Bitcrush logo" />
-        </a>
+    <header class="app-header" data-tauri-drag-region>
+      <div class="header-inner" data-tauri-drag-region></div>
+    </header>
+    <main class="container page">
+      <div class="brand">
+        <img src="/src/assets/bitcrush.png" alt="Bitcrush" class="brand-logo no-drag" height="24" />
       </div>
 
-      <section style="max-width:900px;margin:20px auto;text-align:left">
-        <div class="row" style="gap:10px;flex-wrap:wrap;justify-content:space-between">
-          <div style="flex:1;min-width:260px">
+      <section class="layout">
+        <div class="controls">
+          <div class="card padded">
             <label>Source Image</label>
-            <div id="dropzone" class="card" style="padding:12px;cursor:pointer">
+            <div id="dropzone" class="card padded" style="cursor:pointer">
               <img id="thumb" alt="Selected" style="display:none;width:80px;height:80px;object-fit:cover" />
               <div id="dropHint" class="text-secondary">Drop image here or click to select</div>
               <input id="file" type="file" accept="image/*" style="display:none" />
             </div>
           </div>
 
-          <div style="flex:1;min-width:260px">
+          <div class="card padded">
             <label>Palette</label>
             <select id="palette" class="form-control"></select>
           </div>
 
-          <div style="flex:1;min-width:200px">
+          <div class="card padded">
             <label>Algorithm</label>
             <select id="algorithm" class="form-control">
               <option>Standard</option>
@@ -49,7 +50,7 @@
             </select>
           </div>
 
-          <div style="flex:0 0 140px;min-width:140px">
+          <div class="card padded">
             <label>Grid</label>
             <select id="grid" class="form-control">
               <option value="8">8×8</option>
@@ -62,16 +63,15 @@
           </div>
         </div>
 
-        <div style="margin-top:16px">
-          <label>Preview</label>
-          <div id="preview" class="card" style="height:480px;display:flex;align-items:center;justify-content:center">
+        <div class="preview">
+          <div id="preview" class="card preview-panel">
             <img id="output" alt="Preview" style="display:none;max-width:100%;max-height:100%;image-rendering:pixelated;object-fit:contain" />
             <div id="outputEmpty" class="text-secondary">Preview will appear here</div>
           </div>
         </div>
 
-        <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap">
-          <button id="generate" class="btn btn-primary" disabled>Pixelate</button>
+        <div class="actions">
+          <button id="generate" class="btn btn-primary">Pixelate</button>
           <button id="download-upscaled" class="btn" disabled>Download Preview PNG</button>
           <button id="download-base" class="btn" disabled>Download Base PNG</button>
         </div>

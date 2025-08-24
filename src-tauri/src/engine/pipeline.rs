@@ -3,6 +3,7 @@ use image::{imageops::FilterType, DynamicImage, ImageBuffer, ImageFormat, Rgba, 
 use std::io::Cursor;
 use thiserror::Error;
 
+use crate::engine::algorithms::Algorithm;
 use super::algorithms::get_algorithm_by_name;
 use super::dither::{
     bayer::Bayer,
@@ -43,6 +44,7 @@ fn resize_to_grid(img: &DynamicImage, grid_size: u32) -> RgbaImage {
 }
 
 fn upscale_center_to(img: &RgbaImage, display_size: u32) -> RgbaImage {
+    // force integer scale factor to avoid blurry pixels
     let factor = (display_size / img.width()).max(1);
     let scaled = image::imageops::resize(img, img.width() * factor, img.height() * factor, FilterType::Nearest);
     let mut canvas: RgbaImage = ImageBuffer::from_pixel(
@@ -82,7 +84,10 @@ pub fn render_preview_png(req: RenderRequest) -> Result<String, EngineError> {
         "Randomized Selective" => apply_randomized_selective(&mut grid, &pal_slice, 30.0),
         _ => algo.process(&mut grid, &pal_slice),
     }
-    let up = upscale_center_to(&grid, 640);
+    let target = req.display_size.unwrap_or(640);
+    // Snap display size down to nearest multiple of grid to keep integer scaling
+    let snapped = (target / req.grid_size).max(1) * req.grid_size;
+    let up = upscale_center_to(&grid, snapped);
     encode_png_base64(&up)
 }
 
@@ -93,6 +98,46 @@ pub fn render_base_png(req: RenderRequest) -> Result<String, EngineError> {
     let palette_name = req.palette_name.as_deref().unwrap_or("Flying Tiger");
     let palette = get_palette_by_name(palette_name);
     let pal_slice: Vec<[u8;3]> = palette.colors.clone();
+    match req.algorithm.as_str() {
+        "Floyd-Steinberg" | "Floyd–Steinberg" => FloydSteinberg.process(&mut grid, &pal_slice),
+        "Bayer" => Bayer.process(&mut grid, &pal_slice),
+        "Selective" => apply_selective(&mut grid, &pal_slice, 25.0),
+        "Ordered Selective" => apply_ordered_selective(&mut grid, &pal_slice, 25.0),
+        "Dual Color Dithering" => apply_dual_color(&mut grid, &pal_slice),
+        "Edge Dithering" => apply_edge_dithering(&mut grid, &pal_slice),
+        "Randomized Selective" => apply_randomized_selective(&mut grid, &pal_slice, 30.0),
+        _ => algo.process(&mut grid, &pal_slice),
+    }
+    encode_png_base64(&grid)
+}
+
+// Versions that accept explicit palette colors (e.g., from GPL) to avoid relying on built-ins
+pub fn render_preview_png_with_palette(req: RenderRequest, palette_colors: Vec<[u8;3]>) -> Result<String, EngineError> {
+    let img = decode_data_url_to_image(&req.image_data_url)?;
+    let mut grid = resize_to_grid(&img, req.grid_size);
+    let algo = get_algorithm_by_name(req.algorithm.as_str());
+    let pal_slice: Vec<[u8;3]> = palette_colors;
+    match req.algorithm.as_str() {
+        "Floyd-Steinberg" | "Floyd–Steinberg" => FloydSteinberg.process(&mut grid, &pal_slice),
+        "Bayer" => Bayer.process(&mut grid, &pal_slice),
+        "Selective" => apply_selective(&mut grid, &pal_slice, 25.0),
+        "Ordered Selective" => apply_ordered_selective(&mut grid, &pal_slice, 25.0),
+        "Dual Color Dithering" => apply_dual_color(&mut grid, &pal_slice),
+        "Edge Dithering" => apply_edge_dithering(&mut grid, &pal_slice),
+        "Randomized Selective" => apply_randomized_selective(&mut grid, &pal_slice, 30.0),
+        _ => algo.process(&mut grid, &pal_slice),
+    }
+    let target = req.display_size.unwrap_or(640);
+    let snapped = (target / req.grid_size).max(1) * req.grid_size;
+    let up = upscale_center_to(&grid, snapped);
+    encode_png_base64(&up)
+}
+
+pub fn render_base_png_with_palette(req: RenderRequest, palette_colors: Vec<[u8;3]>) -> Result<String, EngineError> {
+    let img = decode_data_url_to_image(&req.image_data_url)?;
+    let mut grid = resize_to_grid(&img, req.grid_size);
+    let algo = get_algorithm_by_name(req.algorithm.as_str());
+    let pal_slice: Vec<[u8;3]> = palette_colors;
     match req.algorithm.as_str() {
         "Floyd-Steinberg" | "Floyd–Steinberg" => FloydSteinberg.process(&mut grid, &pal_slice),
         "Bayer" => Bayer.process(&mut grid, &pal_slice),

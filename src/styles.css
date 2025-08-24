@@ -1,21 +1,25 @@
 @import "terminal.css";
 
-.logo.vite:hover {
-  filter: drop-shadow(0 0 2em #747bff);
-}
+/* All colors centralized in :root; avoid magic values below */
 
-.logo.typescript:hover {
-  filter: drop-shadow(0 0 2em #2d79c7);
+html, body {
+  margin: 0;
+  background: var(--background-color);
+  height: 100%;
+  overflow: auto; /* allow wheel/trackpad scroll without visible bars */
+  -ms-overflow-style: none; /* IE/Edge */
+  scrollbar-width: none; /* Firefox */
 }
-/* Base layout (kept) */
+html::-webkit-scrollbar,
+body::-webkit-scrollbar {
+  display: none; /* WebKit */
+}
 
 .container {
   margin: 0;
-  padding-top: 10vh;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  text-align: center;
+  padding-top: 6vh;
+  display: block;
+  text-align: left;
 }
 
 .logo {
@@ -25,10 +29,6 @@
   transition: 0.75s;
 }
 
-.logo.tauri:hover {
-  filter: drop-shadow(0 0 2em #24c8db);
-}
-
 .row {
   display: flex;
   justify-content: center;
@@ -36,12 +36,12 @@
 
 a {
   font-weight: 500;
-  color: #646cff;
+  color: var(--link-color);
   text-decoration: inherit;
 }
 
 a:hover {
-  color: #535bf2;
+  color: var(--link-hover-color);
 }
 
 h1 {
@@ -56,32 +56,35 @@ textarea {
   border-radius: 0;
 }
 
-#greet-input {
-  margin-right: 5px;
-}
+/* (removed obsolete greet styles) */
 
 /* Terminal CSS dark theme variables and overrides */
 :root {
-  --global-font-size: 14px; /* smaller base for tighter retro feel */
-  --global-line-height: 1.5em;
+  --global-font-size: 12px; /* smaller base */
+  --global-line-height: 1.2em;
   --global-space: 10px;
 
   --font-stack: "SFMono-Regular", "Menlo", "Monaco", "Lucida Console", "Liberation Mono", "DejaVu Sans Mono", "Bitstream Vera Sans Mono", "Courier New", monospace;
   --mono-font-stack: "SFMono-Regular", "Menlo", "Monaco", "Lucida Console", "Liberation Mono", "DejaVu Sans Mono", "Bitstream Vera Sans Mono", "Courier New", monospace;
 
-  --background-color: #151515;
-  --font-color: #e6e6e6;
-  --invert-font-color: #151515;
-  /* Darker, richer blue for buttons/links/highlights */
-  --primary-color: #1a6fe0; /* keep the darker blue requested */
+  --background-color: #090909; /* darker */
+  --font-color: #cecece;
+  --invert-font-color: #252424;
+  /* Primary uses brand glow color */
+  --primary-color: var(--glow-bitcrush);
   --secondary-color: #9aa0a6;
-  --error-color: #d20962;
+  --error-color: #d2463e;
 
-  --progress-bar-background: #3a3a3a;
-  --progress-bar-fill: #f2f2f2;
+  /* Consolidated surface and border tokens */
+  --surface-color: #0f1114;
+  --border-color: #1a1c21;
 
-  --code-bg-color: #1f1f1f;
-  --block-background-color: #1a1a1a;
+  --code-bg-color: #111318;
+  --block-background-color: #111111;
+  /* Brand/link/glow tokens */
+  --link-color: var(--primary-color);
+  --link-hover-color: var(--primary-color);
+  --glow-bitcrush: #0f439d;
 }
 
 body.terminal {
@@ -89,13 +92,44 @@ body.terminal {
   color: var(--font-color);
 }
 
+/* Header */
+.app-header {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: var(--background-color);
+  border-bottom: none; /* fully seamless with app background */
+  height: 28px; /* macOS overlay titlebar height */
+  -webkit-app-region: drag;
+}
+.header-inner {
+  max-width: 2000px;
+  margin: 0 auto;
+  padding: 0 16px;
+  width: 100%;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 100%;
+  -webkit-app-region: drag;
+}
+
+/* Dedicated brand row below draggable title bar */
+.brand { padding: 8px 16px; }
+.brand-logo { height: 24px; }
+
+/* Make the entire header area draggable, but keep content non-draggable where needed */
+.app-header, .header-inner { -webkit-app-region: drag; }
+.no-drag { -webkit-app-region: no-drag; }
+
 /* Links */
-a {
+ a {
   color: var(--primary-color);
   text-decoration: none;
 }
 
-a:hover {
+ a:hover {
   color: var(--primary-color);
   text-decoration: underline;
 }
@@ -115,13 +149,27 @@ body, .container, .card, .form-control, label, select, button, input, textarea {
 }
 
 label {
-  font-size: 0.9rem;
+  font-size: 0.85rem;
 }
 
 select, input, button {
-  font-size: 0.9rem;
+  font-size: 0.85rem;
 }
 
 .text-secondary {
   color: var(--secondary-color);
 }
+
+/* Simple two-column structure for wider screens */
+.page { max-width: 2000px; margin: 0 auto; }
+.layout { display: grid; grid-template-columns: 1fr; gap: 12px; padding: 12px; }
+@media (min-width: 960px) { .layout { grid-template-columns: 1fr 1fr; align-items: start; } }
+.controls .card { margin-bottom: 12px; }
+.preview .card { margin-bottom: 12px; }
+
+/* Cards and panels */
+.card { background: var(--surface-color); border: 1px solid var(--border-color); }
+.padded { padding: 12px; }
+.form-control { width: 100%; }
+.actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.preview-panel { height: 560px; display: flex; align-items: center; justify-content: center; }

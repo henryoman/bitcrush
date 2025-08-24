@@ -10,6 +10,8 @@ pub struct RenderRequest {
     pub algorithm: String,
     /// Palette name to use (matches built-ins for now)
     pub palette_name: Option<String>,
+    /// Desired preview size; upscaled image width/height (nearest multiple of grid)
+    pub display_size: Option<u32>,
 }
 
 
