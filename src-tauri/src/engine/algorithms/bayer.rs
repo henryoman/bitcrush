@@ -30,8 +30,6 @@ fn find_two_closest(r: u8, g: u8, b: u8, palette: &[[u8;3]]) -> ([u8;3],[u8;3]) 
 pub struct Bayer;
 
 impl Algorithm for Bayer {
-    fn name(&self) -> &'static str { "Bayer" }
-
     fn process(&self, img: &mut RgbaImage, palette: &[[u8;3]]) {
         if palette.is_empty() { return; }
         let w = img.width();

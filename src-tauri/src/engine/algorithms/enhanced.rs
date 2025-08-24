@@ -8,8 +8,6 @@ use super::{Algorithm, RgbaImage};
 pub struct Enhanced;
 
 impl Algorithm for Enhanced {
-    fn name(&self) -> &'static str { "Enhanced" }
-
     fn process(&self, img: &mut RgbaImage, palette: &[[u8;3]]) {
         if palette.is_empty() { return; }
         // Precompute LAB for palette

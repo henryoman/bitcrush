@@ -8,7 +8,6 @@ use image::{ImageBuffer, Rgba};
 pub type RgbaImage = ImageBuffer<Rgba<u8>, Vec<u8>>;
 
 pub trait Algorithm {
-    fn name(&self) -> &'static str;
     fn process(&self, img: &mut RgbaImage, palette: &[[u8;3]]);
 }
 

@@ -62,7 +62,7 @@ textarea {
 
 /* Terminal CSS dark theme variables and overrides */
 :root {
-  --global-font-size: 16px;
+  --global-font-size: 14px; /* smaller base for tighter retro feel */
   --global-line-height: 1.5em;
   --global-space: 10px;
 
@@ -70,10 +70,10 @@ textarea {
   --mono-font-stack: "SFMono-Regular", "Menlo", "Monaco", "Lucida Console", "Liberation Mono", "DejaVu Sans Mono", "Bitstream Vera Sans Mono", "Courier New", monospace;
 
   --background-color: #151515;
-  --font-color: #f2f2f2;
+  --font-color: #e6e6e6;
   --invert-font-color: #151515;
   /* Darker, richer blue for buttons/links/highlights */
-  --primary-color: #1a6fe0;
+  --primary-color: #1a6fe0; /* keep the darker blue requested */
   --secondary-color: #9aa0a6;
   --error-color: #d20962;
 
@@ -105,4 +105,23 @@ a:hover {
 .btn-primary,
 button {
   border-radius: 0;
+}
+
+/* Gentle retro-ish typography scale and safe wrapping */
+body, .container, .card, .form-control, label, select, button, input, textarea {
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  white-space: normal;
+}
+
+label {
+  font-size: 0.9rem;
+}
+
+select, input, button {
+  font-size: 0.9rem;
+}
+
+.text-secondary {
+  color: var(--secondary-color);
 }

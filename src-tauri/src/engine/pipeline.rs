@@ -4,7 +4,7 @@ use std::io::Cursor;
 use thiserror::Error;
 
 use super::algorithms::get_algorithm_by_name;
-use super::palettes::{built_in_palettes, get_palette_by_name};
+use super::palettes::get_palette_by_name;
 
 #[derive(Debug, Error)]
 pub enum EngineError {

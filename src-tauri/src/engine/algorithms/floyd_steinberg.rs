@@ -1,4 +1,4 @@
-use image::{ImageBuffer, Rgba};
+use image::Rgba;
 
 use crate::engine::color::{lab_distance, rgb_to_lab};
 
@@ -20,8 +20,6 @@ fn find_closest_palette_color(r: u8, g: u8, b: u8, palette: &[[u8;3]]) -> [u8;3]
 }
 
 impl Algorithm for FloydSteinberg {
-    fn name(&self) -> &'static str { "Floyd-Steinberg" }
-
     fn process(&self, img: &mut RgbaImage, palette: &[[u8;3]]) {
         if palette.is_empty() { return; }
         let w = img.width() as i32;
