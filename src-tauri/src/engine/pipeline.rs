@@ -4,6 +4,15 @@ use std::io::Cursor;
 use thiserror::Error;
 
 use super::algorithms::get_algorithm_by_name;
+use super::dither::{
+    bayer::Bayer,
+    floyd_steinberg::FloydSteinberg,
+    selective::apply_selective,
+    ordered_selective::apply_ordered_selective,
+    dual_color::apply_dual_color,
+    edge::apply_edge_dithering,
+    randomized_selective::apply_randomized_selective,
+};
 use super::palettes::get_palette_by_name;
 
 #[derive(Debug, Error)]
@@ -63,7 +72,16 @@ pub fn render_preview_png(req: RenderRequest) -> Result<String, EngineError> {
     let palette_name = req.palette_name.as_deref().unwrap_or("Flying Tiger");
     let palette = get_palette_by_name(palette_name);
     let pal_slice: Vec<[u8;3]> = palette.colors.clone();
-    algo.process(&mut grid, &pal_slice);
+    match req.algorithm.as_str() {
+        "Floyd-Steinberg" | "Floyd–Steinberg" => FloydSteinberg.process(&mut grid, &pal_slice),
+        "Bayer" => Bayer.process(&mut grid, &pal_slice),
+        "Selective" => apply_selective(&mut grid, &pal_slice, 25.0),
+        "Ordered Selective" => apply_ordered_selective(&mut grid, &pal_slice, 25.0),
+        "Dual Color Dithering" => apply_dual_color(&mut grid, &pal_slice),
+        "Edge Dithering" => apply_edge_dithering(&mut grid, &pal_slice),
+        "Randomized Selective" => apply_randomized_selective(&mut grid, &pal_slice, 30.0),
+        _ => algo.process(&mut grid, &pal_slice),
+    }
     let up = upscale_center_to(&grid, 640);
     encode_png_base64(&up)
 }
@@ -75,7 +93,16 @@ pub fn render_base_png(req: RenderRequest) -> Result<String, EngineError> {
     let palette_name = req.palette_name.as_deref().unwrap_or("Flying Tiger");
     let palette = get_palette_by_name(palette_name);
     let pal_slice: Vec<[u8;3]> = palette.colors.clone();
-    algo.process(&mut grid, &pal_slice);
+    match req.algorithm.as_str() {
+        "Floyd-Steinberg" | "Floyd–Steinberg" => FloydSteinberg.process(&mut grid, &pal_slice),
+        "Bayer" => Bayer.process(&mut grid, &pal_slice),
+        "Selective" => apply_selective(&mut grid, &pal_slice, 25.0),
+        "Ordered Selective" => apply_ordered_selective(&mut grid, &pal_slice, 25.0),
+        "Dual Color Dithering" => apply_dual_color(&mut grid, &pal_slice),
+        "Edge Dithering" => apply_edge_dithering(&mut grid, &pal_slice),
+        "Randomized Selective" => apply_randomized_selective(&mut grid, &pal_slice, 30.0),
+        _ => algo.process(&mut grid, &pal_slice),
+    }
     encode_png_base64(&grid)
 }
 

@@ -1,7 +1,6 @@
 pub mod standard;
 pub mod enhanced;
-pub mod floyd_steinberg;
-pub mod bayer;
+pub mod artistic;
 
 use image::{ImageBuffer, Rgba};
 
@@ -14,8 +13,7 @@ pub trait Algorithm {
 pub fn get_algorithm_by_name(name: &str) -> Box<dyn Algorithm + Send + Sync> {
     match name {
         "Enhanced" => Box::new(enhanced::Enhanced),
-        "Floyd-Steinberg" | "Floyd–Steinberg" => Box::new(floyd_steinberg::FloydSteinberg),
-        "Bayer" => Box::new(bayer::Bayer),
+        "Artistic" => Box::new(artistic::Artistic),
         _ => Box::new(standard::Standard),
     }
 }
