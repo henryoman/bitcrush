@@ -1,1 +1,1 @@
-bunx repomix --ignore "node_modules/,.next/,.vercel/,_unused/,bun.lock,bun.lockb,tsconfig.tsbuildinfo
+bunx repomix --ignore "node_modules/,.next/,.vercel/,_unused/,bun.lock,bun.lockb,tsconfig.tsbuildinfo"

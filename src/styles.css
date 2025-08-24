@@ -1,3 +1,5 @@
+@import "terminal.css";
+
 .logo.vite:hover {
   filter: drop-shadow(0 0 2em #747bff);
 }
@@ -5,21 +7,7 @@
 .logo.typescript:hover {
   filter: drop-shadow(0 0 2em #2d79c7);
 }
-:root {
-  font-family: Inter, Avenir, Helvetica, Arial, sans-serif;
-  font-size: 16px;
-  line-height: 24px;
-  font-weight: 400;
-
-  color: #0f0f0f;
-  background-color: #f6f6f6;
-
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  -webkit-text-size-adjust: 100%;
-}
+/* Base layout (kept) */
 
 .container {
   margin: 0;
@@ -60,57 +48,61 @@ h1 {
   text-align: center;
 }
 
+/* Terminal CSS styles will handle control look; we only keep sharp corners */
+button,
 input,
-button {
-  border-radius: 8px;
-  border: 1px solid transparent;
-  padding: 0.6em 1.2em;
-  font-size: 1em;
-  font-weight: 500;
-  font-family: inherit;
-  color: #0f0f0f;
-  background-color: #ffffff;
-  transition: border-color 0.25s;
-  box-shadow: 0 2px 2px rgba(0, 0, 0, 0.2);
-}
-
-button {
-  cursor: pointer;
-}
-
-button:hover {
-  border-color: #396cd8;
-}
-button:active {
-  border-color: #396cd8;
-  background-color: #e8e8e8;
-}
-
-input,
-button {
-  outline: none;
+select,
+textarea {
+  border-radius: 0;
 }
 
 #greet-input {
   margin-right: 5px;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    color: #f6f6f6;
-    background-color: #2f2f2f;
-  }
+/* Terminal CSS dark theme variables and overrides */
+:root {
+  --global-font-size: 16px;
+  --global-line-height: 1.5em;
+  --global-space: 10px;
 
-  a:hover {
-    color: #24c8db;
-  }
+  --font-stack: "SFMono-Regular", "Menlo", "Monaco", "Lucida Console", "Liberation Mono", "DejaVu Sans Mono", "Bitstream Vera Sans Mono", "Courier New", monospace;
+  --mono-font-stack: "SFMono-Regular", "Menlo", "Monaco", "Lucida Console", "Liberation Mono", "DejaVu Sans Mono", "Bitstream Vera Sans Mono", "Courier New", monospace;
 
-  input,
-  button {
-    color: #ffffff;
-    background-color: #0f0f0f98;
-  }
-  button:active {
-    background-color: #0f0f0f69;
-  }
+  --background-color: #151515;
+  --font-color: #f2f2f2;
+  --invert-font-color: #151515;
+  /* Darker, richer blue for buttons/links/highlights */
+  --primary-color: #1a6fe0;
+  --secondary-color: #9aa0a6;
+  --error-color: #d20962;
+
+  --progress-bar-background: #3a3a3a;
+  --progress-bar-fill: #f2f2f2;
+
+  --code-bg-color: #1f1f1f;
+  --block-background-color: #1a1a1a;
+}
+
+body.terminal {
+  background-color: var(--background-color);
+  color: var(--font-color);
+}
+
+/* Links */
+a {
+  color: var(--primary-color);
+  text-decoration: none;
+}
+
+a:hover {
+  color: var(--primary-color);
+  text-decoration: underline;
+}
+
+/* Ensure Terminal buttons stay sharp */
+.btn,
+.btn-primary,
+button {
+  border-radius: 0;
 }

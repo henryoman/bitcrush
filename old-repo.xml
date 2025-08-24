@@ -1,0 +1,3617 @@
+This file is a merged representation of a subset of the codebase, containing files not matching ignore patterns, combined into a single document by Repomix.
+
+<file_summary>
+This section contains a summary of this file.
+
+<purpose>
+This file contains a packed representation of a subset of the repository's contents that is considered the most important context.
+It is designed to be easily consumable by AI systems for analysis, code review,
+or other automated processes.
+</purpose>
+
+<file_format>
+The content is organized as follows:
+1. This summary section
+2. Repository information
+3. Directory structure
+4. Repository files (if enabled)
+5. Multiple file entries, each consisting of:
+  - File path as an attribute
+  - Full contents of the file
+</file_format>
+
+<usage_guidelines>
+- This file should be treated as read-only. Any changes should be made to the
+  original repository files, not this packed version.
+- When processing this file, use the file path to distinguish
+  between different files in the repository.
+- Be aware that this file may contain sensitive information. Handle it with
+  the same level of security as you would the original repository.
+</usage_guidelines>
+
+<notes>
+- Some files may have been excluded based on .gitignore rules and Repomix's configuration
+- Binary files are not included in this packed representation. Please refer to the Repository Structure section for a complete list of file paths, including binary files
+- Files matching these patterns are excluded: node_modules/, .next/, .vercel/, _unused/, bun.lock, bun.lockb, tsconfig.tsbuildinfo
+- Files matching patterns in .gitignore are excluded
+- Files matching default ignore patterns are excluded
+- Files are sorted by Git change count (files with more changes are at the bottom)
+</notes>
+
+</file_summary>
+
+<directory_structure>
+.cursor/
+  rules/
+    use-bun-instead-of-node-vite-npm-pnpm.mdc
+app/
+  (bitcrush)/
+    _components/
+      AlgorithmSelector.tsx
+      DownloadButtons.tsx
+      GridSizeSelector.tsx
+      ImageUploader.tsx
+      OutputPreview.tsx
+      PalettePicker.tsx
+    _hooks/
+      usePixelization.ts
+  globals.css
+  layout.tsx
+  page.tsx
+components/
+  ui/
+    button.tsx
+    card.tsx
+  theme-provider.tsx
+config/
+  gpl-palettes/
+    comfy52.gpl
+    comicscapes-50.gpl
+    ekko-64.gpl
+    luap-40.gpl
+    nice69.gpl
+    plague.gpl
+  colors.yaml
+  palettes.ts
+  params.ts
+  params.yaml
+lib/
+  algorithms/
+    utils/
+      color.ts
+    artistic.ts
+    bayer.ts
+    dual-color-dithering.ts
+    edge-dithering.ts
+    enhanced.ts
+    floyd-steinberg.ts
+    index.ts
+    ordered-selective.ts
+    randomized-selective.ts
+    selective-dithering.ts
+    standard.ts
+    types.ts
+  pixelizer/
+    pixelizeImage.ts
+  algorithms.ts
+  utils.ts
+.eslintrc.json
+.gitignore
+BITCRUSH_UI_STANDALONE.md
+components.json
+next.config.mjs
+package.json
+postcss.config.mjs
+README.md
+REWRITE_PLAN.md
+tsconfig.json
+</directory_structure>
+
+<files>
+This section contains the contents of the repository's files.
+
+<file path=".cursor/rules/use-bun-instead-of-node-vite-npm-pnpm.mdc">
+---
+description: Use Bun instead of Node.js, npm, pnpm, or vite.
+globs: "*.ts, *.tsx, *.html, *.css, *.js, *.jsx, package.json"
+alwaysApply: false
+---
+
+Default to using Bun instead of Node.js.
+
+- Use `bun <file>` instead of `node <file>` or `ts-node <file>`
+- Use `bun test` instead of `jest` or `vitest`
+- Use `bun build <file.html|file.ts|file.css>` instead of `webpack` or `esbuild`
+- Use `bun install` instead of `npm install` or `yarn install` or `pnpm install`
+- Use `bun run <script>` instead of `npm run <script>` or `yarn run <script>` or `pnpm run <script>`
+- Bun automatically loads .env, so don't use dotenv.
+
+## APIs
+
+- `Bun.serve()` supports WebSockets, HTTPS, and routes. Don't use `express`.
+- `bun:sqlite` for SQLite. Don't use `better-sqlite3`.
+- `Bun.redis` for Redis. Don't use `ioredis`.
+- `Bun.sql` for Postgres. Don't use `pg` or `postgres.js`.
+- `WebSocket` is built-in. Don't use `ws`.
+- Prefer `Bun.file` over `node:fs`'s readFile/writeFile
+- Bun.$`ls` instead of execa.
+
+## Testing
+
+Use `bun test` to run tests.
+
+```ts#index.test.ts
+import { test, expect } from "bun:test";
+
+test("hello world", () => {
+  expect(1).toBe(1);
+});
+```
+
+## Frontend
+
+Use HTML imports with `Bun.serve()`. Don't use `vite`. HTML imports fully support React, CSS, Tailwind.
+
+Server:
+
+```ts#index.ts
+import index from "./index.html"
+
+Bun.serve({
+  routes: {
+    "/": index,
+    "/api/users/:id": {
+      GET: (req) => {
+        return new Response(JSON.stringify({ id: req.params.id }));
+      },
+    },
+  },
+  // optional websocket support
+  websocket: {
+    open: (ws) => {
+      ws.send("Hello, world!");
+    },
+    message: (ws, message) => {
+      ws.send(message);
+    },
+    close: (ws) => {
+      // handle close
+    }
+  },
+  development: {
+    hmr: true,
+    console: true,
+  }
+})
+```
+
+HTML files can import .tsx, .jsx or .js files directly and Bun's bundler will transpile & bundle automatically. `<link>` tags can point to stylesheets and Bun's CSS bundler will bundle.
+
+```html#index.html
+<html>
+  <body>
+    <h1>Hello, world!</h1>
+    <script type="module" src="./frontend.tsx"></script>
+  </body>
+</html>
+```
+
+With the following `frontend.tsx`:
+
+```tsx#frontend.tsx
+import React from "react";
+
+// import .css files directly and it works
+import './index.css';
+
+import { createRoot } from "react-dom/client";
+
+const root = createRoot(document.body);
+
+export default function Frontend() {
+  return <h1>Hello, world!</h1>;
+}
+
+root.render(<Frontend />);
+```
+
+Then, run index.ts
+
+```sh
+bun --hot ./index.ts
+```
+
+For more information, read the Bun API docs in `node_modules/bun-types/docs/**.md`.
+</file>
+
+<file path="app/(bitcrush)/_components/AlgorithmSelector.tsx">
+"use client"
+
+import type { PixelizationAlgorithm } from "@/lib/algorithms"
+
+interface AlgorithmSelectorProps {
+  algorithms: PixelizationAlgorithm[]
+  value: string
+  onChange: (name: string) => void
+}
+
+export function AlgorithmSelector({ algorithms, value, onChange }: AlgorithmSelectorProps) {
+  return (
+    <>
+      <div className="grid grid-cols-2 gap-2">
+        {algorithms.map((algo) => (
+          <button
+            key={algo.name}
+            onClick={() => onChange(algo.name)}
+            className={`p-2 rounded-md border text-xs font-medium transition-colors ${
+              value === algo.name ? "border-foreground bg-foreground text-background" : "border-border/50 hover:border-border"
+            }`}
+          >
+            {algo.name}
+          </button>
+        ))}
+      </div>
+      <p className="text-xs text-muted-foreground mt-2">
+        {algorithms.find((a) => a.name === value)?.description || "Select an algorithm"}
+      </p>
+    </>
+  )
+}
+</file>
+
+<file path="app/(bitcrush)/_components/DownloadButtons.tsx">
+"use client"
+
+import { Button } from "@/components/ui/button"
+import { Download } from "lucide-react"
+
+interface DownloadButtonsProps {
+  pixelizedImage: string | null
+  baseResolutionImage: string | null
+  algorithm: string
+  gridSize: number
+  paletteName: string
+}
+
+export function DownloadButtons({ pixelizedImage, baseResolutionImage, algorithm, gridSize, paletteName }: DownloadButtonsProps) {
+  const download = (dataUrl: string, name: string) => {
+    const link = document.createElement("a")
+    link.download = name
+    link.href = dataUrl
+    link.click()
+  }
+
+  return (
+    <div className="space-y-2">
+      {pixelizedImage && (
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() =>
+            download(
+              pixelizedImage,
+              `pixelized-${algorithm.toLowerCase()}-${gridSize}x${gridSize}-${paletteName.toLowerCase().replace(/\s+/g, "-")}.png`,
+            )
+          }
+          className="w-full bg-transparent"
+        >
+          <Download className="w-3 h-3 mr-2" />
+          Download Preview (Upscaled)
+        </Button>
+      )}
+      {baseResolutionImage && (
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() =>
+            download(
+              baseResolutionImage,
+              `pixelized-base-${algorithm.toLowerCase()}-${gridSize}x${gridSize}-${paletteName.toLowerCase().replace(/\s+/g, "-")}.png`,
+            )
+          }
+          className="w-full bg-transparent"
+        >
+          <Download className="w-3 h-3 mr-2" />
+          Download Base Resolution ({gridSize}×{gridSize})
+        </Button>
+      )}
+    </div>
+  )
+}
+</file>
+
+<file path="app/(bitcrush)/_components/GridSizeSelector.tsx">
+"use client"
+
+interface GridSizeSelectorProps {
+  options: { value: number; label: string }[]
+  value: number
+  onChange: (value: number) => void
+}
+
+export function GridSizeSelector({ options, value, onChange }: GridSizeSelectorProps) {
+  return (
+    <div className="grid grid-cols-4 gap-2">
+      {options.map((size) => (
+        <button
+          key={size.value}
+          onClick={() => onChange(size.value)}
+          className={`p-2 rounded-md border text-xs font-medium transition-colors ${
+            value === size.value ? "border-foreground bg-foreground text-background" : "border-border/50 hover:border-border"
+          }`}
+        >
+          {size.label}
+        </button>
+      ))}
+    </div>
+  )
+}
+</file>
+
+<file path="app/globals.css">
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+:root {
+  /* Updated color tokens to match pixelization tool design brief */
+  --background: oklch(1 0 0); /* #ffffff - Clean white background */
+  --foreground: oklch(0.35 0 0); /* #4b5563 - Dark gray for text */
+  --card: oklch(0.99 0.01 85); /* #fffbeb - Soft off-white for cards */
+  --card-foreground: oklch(0.35 0 0); /* #4b5563 - Text on cards */
+  --popover: oklch(1 0 0); /* #ffffff - Popover background */
+  --popover-foreground: oklch(0.35 0 0); /* #4b5563 - Popover text */
+  --primary: oklch(0.65 0.15 45); /* #ea580c - Vibrant orange primary */
+  --primary-foreground: oklch(1 0 0); /* #ffffff - White text on primary */
+  --secondary: oklch(0.7 0.18 35); /* #f97316 - Bright orange secondary */
+  --secondary-foreground: oklch(1 0 0); /* #ffffff - White text on secondary */
+  --muted: oklch(0.98 0 0); /* #f9fafb - Very light gray for muted areas */
+  --muted-foreground: oklch(0.35 0 0); /* #4b5563 - Text in muted sections */
+  --accent: oklch(0.7 0.18 35); /* #f97316 - Orange accent for highlights */
+  --accent-foreground: oklch(1 0 0); /* #ffffff - White text on accent */
+  --destructive: oklch(0.55 0.25 15); /* #be123c - Red for destructive actions */
+  --destructive-foreground: oklch(1 0 0); /* #ffffff - White text on destructive */
+  --border: oklch(0.92 0 0); /* #e5e7eb - Light gray borders */
+  --input: oklch(1 0 0); /* #ffffff - White input backgrounds */
+  --ring: oklch(0.7 0.18 35); /* #f97316 - Orange focus rings */
+  --chart-1: oklch(0.646 0.222 41.116);
+  --chart-2: oklch(0.6 0.118 184.704);
+  --chart-3: oklch(0.398 0.07 227.392);
+  --chart-4: oklch(0.828 0.189 84.429);
+  --chart-5: oklch(0.769 0.188 70.08);
+  --radius: 0.5rem; /* Rounded corners */
+  --sidebar: oklch(1 0 0); /* #ffffff - White sidebar */
+  --sidebar-foreground: oklch(0.35 0 0); /* #4b5563 - Sidebar text */
+  --sidebar-primary: oklch(0.99 0.01 85); /* #fffbeb - Primary sidebar section */
+  --sidebar-primary-foreground: oklch(0.35 0 0); /* #4b5563 - Primary sidebar text */
+  --sidebar-accent: oklch(0.7 0.18 35); /* #f97316 - Sidebar accent */
+  --sidebar-accent-foreground: oklch(1 0 0); /* #ffffff - Sidebar accent text */
+  --sidebar-border: oklch(0.92 0 0); /* #e5e7eb - Sidebar borders */
+  --sidebar-ring: oklch(0.7 0.18 35); /* #f97316 - Sidebar focus rings */
+  --font-open-sans: "Open Sans", sans-serif;
+  --font-work-sans: "Work Sans", serif;
+}
+
+.dark {
+  --background: oklch(0.145 0 0);
+  --foreground: oklch(0.985 0 0);
+  --card: oklch(0.145 0 0);
+  --card-foreground: oklch(0.985 0 0);
+  --popover: oklch(0.145 0 0);
+  --popover-foreground: oklch(0.985 0 0);
+  --primary: oklch(0.985 0 0);
+  --primary-foreground: oklch(0.205 0 0);
+  --secondary: oklch(0.269 0 0);
+  --secondary-foreground: oklch(0.985 0 0);
+  --muted: oklch(0.269 0 0);
+  --muted-foreground: oklch(0.708 0 0);
+  --accent: oklch(0.269 0 0);
+  --accent-foreground: oklch(0.985 0 0);
+  --destructive: oklch(0.396 0.141 25.723);
+  --destructive-foreground: oklch(0.637 0.237 25.331);
+  --border: oklch(0.269 0 0);
+  --input: oklch(0.269 0 0);
+  --ring: oklch(0.439 0 0);
+  --chart-1: oklch(0.488 0.243 264.376);
+  --chart-2: oklch(0.696 0.17 162.48);
+  --chart-3: oklch(0.769 0.188 70.08);
+  --chart-4: oklch(0.627 0.265 303.9);
+  --chart-5: oklch(0.645 0.246 16.439);
+  --sidebar: oklch(0.205 0 0);
+  --sidebar-foreground: oklch(0.985 0 0);
+  --sidebar-primary: oklch(0.488 0.243 264.376);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.269 0 0);
+  --sidebar-accent-foreground: oklch(0.985 0 0);
+  --sidebar-border: oklch(0.269 0 0);
+  --sidebar-ring: oklch(0.439 0 0);
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --font-sans: var(--font-open-sans);
+  --font-serif: var(--font-work-sans);
+  --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+</file>
+
+<file path="components/ui/button.tsx">
+import * as React from "react"
+import { Slot } from "@radix-ui/react-slot"
+import { cva, type VariantProps } from "class-variance-authority"
+
+import { cn } from "@/lib/utils"
+
+const buttonVariants = cva(
+  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-all disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg:not([class*='size-'])]:size-4 shrink-0 [&_svg]:shrink-0 outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive",
+  {
+    variants: {
+      variant: {
+        default:
+          "bg-primary text-primary-foreground shadow-xs hover:bg-primary/90",
+        destructive:
+          "bg-destructive text-white shadow-xs hover:bg-destructive/90 focus-visible:ring-destructive/20 dark:focus-visible:ring-destructive/40 dark:bg-destructive/60",
+        outline:
+          "border bg-background shadow-xs hover:bg-accent hover:text-accent-foreground dark:bg-input/30 dark:border-input dark:hover:bg-input/50",
+        secondary:
+          "bg-secondary text-secondary-foreground shadow-xs hover:bg-secondary/80",
+        ghost:
+          "hover:bg-accent hover:text-accent-foreground dark:hover:bg-accent/50",
+        link: "text-primary underline-offset-4 hover:underline",
+      },
+      size: {
+        default: "h-9 px-4 py-2 has-[>svg]:px-3",
+        sm: "h-8 rounded-md gap-1.5 px-3 has-[>svg]:px-2.5",
+        lg: "h-10 rounded-md px-6 has-[>svg]:px-4",
+        icon: "size-9",
+      },
+    },
+    defaultVariants: {
+      variant: "default",
+      size: "default",
+    },
+  }
+)
+
+function Button({
+  className,
+  variant,
+  size,
+  asChild = false,
+  ...props
+}: React.ComponentProps<"button"> &
+  VariantProps<typeof buttonVariants> & {
+    asChild?: boolean
+  }) {
+  const Comp = asChild ? Slot : "button"
+
+  return (
+    <Comp
+      data-slot="button"
+      className={cn(buttonVariants({ variant, size, className }))}
+      {...props}
+    />
+  )
+}
+
+export { Button, buttonVariants }
+</file>
+
+<file path="components/ui/card.tsx">
+import * as React from "react"
+
+import { cn } from "@/lib/utils"
+
+function Card({ className, ...props }: React.ComponentProps<"div">) {
+  return (
+    <div
+      data-slot="card"
+      className={cn(
+        "bg-card text-card-foreground flex flex-col gap-6 rounded-xl border py-6 shadow-sm",
+        className
+      )}
+      {...props}
+    />
+  )
+}
+
+function CardHeader({ className, ...props }: React.ComponentProps<"div">) {
+  return (
+    <div
+      data-slot="card-header"
+      className={cn(
+        "@container/card-header grid auto-rows-min grid-rows-[auto_auto] items-start gap-1.5 px-6 has-data-[slot=card-action]:grid-cols-[1fr_auto] [.border-b]:pb-6",
+        className
+      )}
+      {...props}
+    />
+  )
+}
+
+function CardTitle({ className, ...props }: React.ComponentProps<"div">) {
+  return (
+    <div
+      data-slot="card-title"
+      className={cn("leading-none font-semibold", className)}
+      {...props}
+    />
+  )
+}
+
+function CardDescription({ className, ...props }: React.ComponentProps<"div">) {
+  return (
+    <div
+      data-slot="card-description"
+      className={cn("text-muted-foreground text-sm", className)}
+      {...props}
+    />
+  )
+}
+
+function CardAction({ className, ...props }: React.ComponentProps<"div">) {
+  return (
+    <div
+      data-slot="card-action"
+      className={cn(
+        "col-start-2 row-span-2 row-start-1 self-start justify-self-end",
+        className
+      )}
+      {...props}
+    />
+  )
+}
+
+function CardContent({ className, ...props }: React.ComponentProps<"div">) {
+  return (
+    <div
+      data-slot="card-content"
+      className={cn("px-6", className)}
+      {...props}
+    />
+  )
+}
+
+function CardFooter({ className, ...props }: React.ComponentProps<"div">) {
+  return (
+    <div
+      data-slot="card-footer"
+      className={cn("flex items-center px-6 [.border-t]:pt-6", className)}
+      {...props}
+    />
+  )
+}
+
+export {
+  Card,
+  CardHeader,
+  CardFooter,
+  CardTitle,
+  CardAction,
+  CardDescription,
+  CardContent,
+}
+</file>
+
+<file path="components/theme-provider.tsx">
+'use client'
+
+import * as React from 'react'
+import {
+  ThemeProvider as NextThemesProvider,
+  type ThemeProviderProps,
+} from 'next-themes'
+
+export function ThemeProvider({ children, ...props }: ThemeProviderProps) {
+  return <NextThemesProvider {...props}>{children}</NextThemesProvider>
+}
+</file>
+
+<file path="config/gpl-palettes/comfy52.gpl">
+GIMP Palette
+#Palette Name: comfy52
+#Description: Wide range of colors with the focus on stylized landscape and character design.
+#Colors: 52
+63	67	40	3f4328
+95	113	50	5f7132
+148	173	57	94ad39
+194	214	79	c2d64f
+239	243	124	eff37c
+227	230	172	e3e6ac
+165	198	124	a5c67c
+115	154	112	739a70
+77	102	89	4d6659
+52	63	65	343f41
+40	46	59	282e3b
+26	31	46	1a1f2e
+30	49	75	1e314b
+47	76	108	2f4c6c
+61	128	163	3d80a3
+99	196	204	63c4cc
+154	229	213	9ae5d5
+229	239	239	e5efef
+186	201	205	bac9cd
+141	153	164	8d99a4
+105	111	128	696f80
+65	68	83	414453
+184	161	194	b8a1c2
+126	101	155	7e659b
+92	58	111	5c3a6f
+57	39	94	39275e
+47	25	62	2f193e
+78	26	73	4e1a49
+123	35	76	7b234c
+178	54	87	b23657
+209	105	116	d16974
+237	170	163	edaaa3
+238	203	144	eecb90
+225	168	69	e1a845
+197	120	53	c57835
+141	72	48	8d4830
+228	114	89	e47259
+195	60	64	c33c40
+141	54	73	8d3649
+92	43	52	5c2b34
+60	37	43	3c252b
+104	64	57	684039
+130	86	70	825646
+183	120	98	b77862
+125	89	93	7d595d
+83	59	65	533b41
+63	51	59	3f333b
+43	34	42	2b222a
+109	78	75	6d4e4b
+134	112	102	867066
+180	157	126	b49d7e
+196	198	184	c4c6b8
+</file>
+
+<file path="config/gpl-palettes/comicscapes-50.gpl">
+GIMP Palette
+#Palette Name: Comicscapes 50
+#Description: An universal pallete with desaturated colour and papery vibes
+#Colors: 50
+142	197	181	8ec5b5
+112	173	164	70ada4
+91	154	154	5b9a9a
+77	125	141	4d7d8d
+54	84	113	365471
+42	66	104	2a4268
+25	36	73	192449
+21	13	55	150d37
+20	7	38	140726
+12	22	52	0c1634
+16	45	64	102d40
+22	68	77	16444d
+31	96	94	1f605e
+46	129	114	2e8172
+64	158	116	409e74
+98	187	125	62bb7d
+121	205	122	79cd7a
+36	13	57	240d39
+56	21	78	38154e
+85	30	102	551e66
+113	45	122	712d7a
+146	66	143	92428f
+173	96	143	ad608f
+146	181	184	92b5b8
+134	157	162	869da2
+121	135	142	79878e
+103	108	120	676c78
+89	89	102	595966
+71	68	78	47444e
+63	58	67	3f3a43
+54	47	55	362f37
+42	35	40	2a2328
+14	2	10	0e020a
+52	15	33	340f21
+78	31	50	4e1f32
+116	52	68	743444
+140	69	78	8c454e
+162	89	89	a25959
+179	115	106	b3736a
+198	149	128	c69580
+210	174	145	d2ae91
+229	204	171	e5ccab
+242	233	205	f2e9cd
+242	223	167	f2dfa7
+223	182	132	dfb684
+210	149	103	d29567
+191	110	80	bf6e50
+178	78	61	b24e3d
+164	48	69	a43045
+149	36	82	952452
+</file>
+
+<file path="config/gpl-palettes/ekko-64.gpl">
+GIMP Palette
+#Palette Name: Ekko-64
+#Description: Master palette for a game dev project.&nbsp; Figured I'd share.&nbsp; A bit on the desaturated side, but not too washed out, I hope.<br>
+#Colors: 64
+255	255	250	fffffa
+229	227	227	e5e3e3
+186	178	182	bab2b6
+148	134	144	948690
+107	96	110	6b606e
+80	66	84	504254
+50	43	59	322b3b
+30	27	39	1e1b27
+13	13	15	0d0d0f
+79	69	64	4f4540
+105	94	87	695e57
+154	141	122	9a8d7a
+213	201	171	d5c9ab
+251	242	208	fbf2d0
+181	174	145	b5ae91
+131	129	108	83816c
+90	92	88	5a5c58
+56	56	73	383849
+148	162	133	94a285
+115	131	105	738369
+84	104	81	546851
+55	76	70	374c46
+42	57	65	2a3941
+36	40	50	242832
+192	217	217	c0d9d9
+120	154	172	789aac
+86	113	131	567183
+62	81	94	3e515e
+245	219	147	f5db93
+217	181	111	d9b56f
+187	146	86	bb9256
+156	116	68	9c7444
+121	86	54	795636
+85	59	44	553b2c
+54	42	41	362a29
+38	32	38	262026
+56	34	45	38222d
+84	36	52	542434
+117	43	57	752b39
+150	65	61	96413d
+181	98	70	b56246
+216	142	79	d88e4f
+239	193	95	efc15f
+194	183	82	c2b752
+160	163	75	a0a34b
+126	137	64	7e8940
+94	119	69	5e7745
+61	101	77	3d654d
+81	127	78	517f4e
+113	157	80	719d50
+151	189	86	97bd56
+45	65	110	2d416e
+59	105	146	3b6992
+81	141	163	518da3
+131	197	207	83c5cf
+190	251	251	befbfb
+36	40	73	242849
+55	43	84	372b54
+77	52	84	4d3454
+103	69	95	67455f
+134	97	112	866170
+173	130	127	ad827f
+231	177	158	e7b19e
+242	211	181	f2d3b5
+</file>
+
+<file path="config/gpl-palettes/luap-40.gpl">
+GIMP Palette
+#Palette Name: Luap 40
+#Description: 40 colors palette created with 6 primar shades : blue, green, red, pink, brown, gray.
+#Colors: 40
+89	112	128	597080
+109	161	138	6da18a
+134	191	143	86bf8f
+181	217	163	b5d9a3
+224	230	195	e0e6c3
+240	235	192	f0ebc0
+230	204	161	e6cca1
+217	159	130	d99f82
+196	115	108	c4736c
+189	85	95	bd555f
+140	63	82	8c3f52
+115	52	83	733453
+102	41	76	66294c
+51	26	51	331a33
+67	48	87	433057
+70	74	115	464a73
+84	103	153	546799
+102	153	204	6699cc
+130	181	217	82b5d9
+161	213	230	a1d5e6
+194	242	242	c2f2f2
+245	245	245	f5f5f5
+218	218	218	dadada
+191	191	191	bfbfbf
+163	163	163	a3a3a3
+136	136	136	888888
+109	109	109	6d6d6d
+81	81	81	515151
+54	54	54	363636
+26	26	26	1a1a1a
+51	41	31	33291f
+64	51	38	403326
+87	70	57	574639
+115	95	75	735f4b
+179	147	116	b39374
+217	184	152	d9b898
+230	212	195	e6d4c3
+217	184	173	d9b8ad
+201	143	143	c98f8f
+191	105	121	bf6979
+</file>
+
+<file path="config/gpl-palettes/nice69.gpl">
+GIMP Palette
+#Palette Name: nice69
+#Description:  "69 shades of more than gray."  This sexy palette consists of handpicked, recherché colors, whose hues were tested and ripened in the sultry heat of anticipation of over 420 dank days. The fervently beaming tints snuggle each other on tight colorramps, forming an interlocking set of multifarious colors. It's predominantly focussed on light, vibrant lightwaves that penetrate your lusting eyes, arousing your ticklish and sensitive photoreceptors.  Still, the palette is rich in seducing nuances and zealously optimized for versatile use - especially in passion projects that *highly saturate* one's thirst for pixelated pleasures. Each color was deliberately named to get (at least) your creative juices flowing.  Today, nerdettes and gentlenerds, I present to you: The caressingly crafted, the climactic opus magnum of my oeuvre: The nice69™!!
+#Colors: 69
+4	3	4	040304
+32	29	36	201d24
+65	62	73	413e49
+102	101	115	666573
+144	145	161	9091a1
+192	194	206	c0c2ce
+246	246	240	f6f6f0
+102	134	82	668652
+188	199	118	bcc776
+216	216	205	d8d8cd
+169	169	151	a9a997
+125	124	111	7d7c6f
+88	85	76	58554c
+65	58	47	413a2f
+43	32	23	2b2017
+88	58	38	583a26
+140	89	55	8c5937
+179	124	71	b37c47
+212	159	100	d49f64
+237	187	131	edbb83
+243	209	171	f3d1ab
+255	233	202	ffe9ca
+255	206	182	ffceb6
+255	165	138	ffa58a
+212	124	109	d47c6d
+147	70	70	934646
+82	14	32	520e20
+39	2	11	27020b
+143	30	47	8f1e2f
+206	71	57	ce4739
+246	100	74	f6644a
+228	117	43	e4752b
+246	153	48	f69930
+255	192	67	ffc043
+255	227	76	ffe34c
+255	246	158	fff69e
+255	254	218	fffeda
+124	229	151	7ce597
+72	182	133	48b685
+204	237	130	cced82
+154	203	79	9acb4f
+113	167	59	71a73b
+65	134	55	418637
+28	95	55	1c5f37
+17	46	58	112e3a
+16	77	108	104d6c
+20	107	117	146b75
+54	141	146	368d92
+51	186	185	33bab9
+131	225	237	83e1ed
+203	236	255	cbecff
+144	205	243	90cdf3
+108	167	231	6ca7e7
+85	130	216	5582d8
+67	101	179	4365b3
+57	71	143	39478f
+36	34	88	242258
+25	18	52	191234
+76	58	117	4c3a75
+147	101	185	9365b9
+200	157	222	c89dde
+255	211	254	ffd3fe
+249	156	234	f99cea
+200	91	183	c85bb7
+143	60	146	8f3c92
+76	46	82	4c2e52
+237	170	198	edaac6
+216	109	144	d86d90
+182	56	91	b6385b
+</file>
+
+<file path="config/gpl-palettes/plague.gpl">
+GIMP Palette
+#Palette Name: Plague
+#Description: My personal palette's new update- To really get top results with your art, use these dull colours to draw and then boost the saturation afterwards. I hope you have a great time with it!
+#Colors: 60
+51	38	48	332630
+78	52	62	4e343e
+118	64	68	764044
+153	74	71	994a47
+177	102	89	b16659
+183	140	121	b78c79
+201	176	157	c9b09d
+220	216	207	dcd8cf
+54	44	38	362c26
+81	54	48	513630
+110	62	62	6e3e3e
+148	83	98	945362
+166	104	137	a66889
+170	133	172	aa85ac
+187	166	199	bba6c7
+212	202	202	d4caca
+65	53	78	41354e
+71	67	110	47436e
+84	100	150	546496
+87	131	166	5783a6
+109	155	169	6d9ba9
+151	185	182	97b9b6
+192	212	203	c0d4cb
+33	44	51	212c33
+39	66	72	274248
+47	99	88	2f6358
+56	134	98	388662
+76	158	99	4c9e63
+111	172	112	6fac70
+158	191	150	9ebf96
+195	201	172	c3c9ac
+31	48	47	1f302f
+41	72	52	294834
+53	99	51	356333
+93	129	54	5d8136
+130	153	65	829941
+166	169	84	a6a954
+191	191	116	bfbf74
+203	204	163	cbcca3
+83	60	41	533c29
+115	90	42	735a2a
+148	126	42	947e2a
+161	153	55	a19937
+199	189	166	c7bda6
+46	29	36	2e1d24
+75	39	44	4b272c
+110	56	41	6e3829
+142	80	38	8e5026
+158	112	45	9e702d
+166	150	78	a6964e
+188	185	126	bcb97e
+180	173	142	b4ad8e
+255	255	255	ffffff
+0	0	0	000000
+29	30	24	1d1e18
+43	46	36	2b2e24
+70	70	51	464633
+99	96	73	636049
+132	126	89	847e59
+158	152	118	9e9876
+</file>
+
+<file path="config/colors.yaml">
+palettes:
+  Flying Tiger:
+    - "#000000"
+    - "#ffffff"
+    - "#ff0000"
+    - "#00ff00"
+    - "#0000ff"
+    - "#ffff00"
+    - "#ffa500"
+    - "#800080"
+    - "#ff69b4"
+    - "#00ffff"
+
+  Black & White:
+    - "#000000"
+    - "#ffffff"
+
+  Cozy 8:
+    - "#2e294e"
+    - "#541388"
+    - "#f1e9da"
+    - "#ffd400"
+    - "#d90368"
+    - "#0081a7"
+    - "#00afb9"
+    - "#fed9b7"
+
+  Retro Gaming:
+    - "#0f0f23"
+    - "#262b44"
+    - "#3e4a5c"
+    - "#5a6988"
+    - "#738699"
+    - "#8ea3b0"
+    - "#a4c0c7"
+    - "#c0dddd"
+
+  Sunset Vibes:
+    - "#2d1b69"
+    - "#11296b"
+    - "#0f4c75"
+    - "#3282b8"
+    - "#bbe1fa"
+    - "#ff6b6b"
+    - "#ffa726"
+    - "#ffcc02"
+
+  Forest Dreams:
+    - "#1a3a2e"
+    - "#16423c"
+    - "#0f3460"
+    - "#533a71"
+    - "#6a994e"
+    - "#a7c957"
+    - "#f2e8cf"
+    - "#bc4749"
+</file>
+
+<file path="config/palettes.ts">
+import type { ColorPalette } from "@/lib/algorithms"
+
+export const PALETTES: ColorPalette[] = [
+  {
+    name: "Flying Tiger",
+    colors: [
+      "#000000",
+      "#ffffff",
+      "#ff0000",
+      "#00ff00",
+      "#0000ff",
+      "#ffff00",
+      "#ffa500",
+      "#800080",
+      "#ff69b4",
+      "#00ffff",
+    ],
+  },
+  {
+    name: "Black & White",
+    colors: ["#000000", "#ffffff"],
+  },
+  {
+    name: "Cozy 8",
+    colors: [
+      "#2e294e",
+      "#541388",
+      "#f1e9da",
+      "#ffd400",
+      "#d90368",
+      "#0081a7",
+      "#00afb9",
+      "#fed9b7",
+    ],
+  },
+  {
+    name: "Retro Gaming",
+    colors: [
+      "#0f0f23",
+      "#262b44",
+      "#3e4a5c",
+      "#5a6988",
+      "#738699",
+      "#8ea3b0",
+      "#a4c0c7",
+      "#c0dddd",
+    ],
+  },
+  {
+    name: "Sunset Vibes",
+    colors: [
+      "#2d1b69",
+      "#11296b",
+      "#0f4c75",
+      "#3282b8",
+      "#bbe1fa",
+      "#ff6b6b",
+      "#ffa726",
+      "#ffcc02",
+    ],
+  },
+  {
+    name: "Forest Dreams",
+    colors: [
+      "#1a3a2e",
+      "#16423c",
+      "#0f3460",
+      "#533a71",
+      "#6a994e",
+      "#a7c957",
+      "#f2e8cf",
+      "#bc4749",
+    ],
+  },
+]
+</file>
+
+<file path="config/params.ts">
+import type { PixelizationParams, ColorPalette } from "@/lib/algorithms"
+import { PALETTES } from "@/config/palettes"
+
+const defaultPalette: ColorPalette =
+  PALETTES.find((p) => p.name === "Flying Tiger") ?? PALETTES[0] ?? { name: "Default", colors: ["#000000", "#ffffff"] }
+
+export const DEFAULT_PARAMS: PixelizationParams = {
+  gridSize: 32,
+  palette: defaultPalette,
+}
+</file>
+
+<file path="config/params.yaml">
+# Pixelization settings
+grid_size: 32       # Size of the pixel grid (8, 16, 32, or 64)
+pixel_size: 20      # Upscale factor for crisp display
+palette_name: "Flying Tiger"  # Must match a key in colors.yaml
+
+# Processing options
+auto_square: true   # Automatically crop images to square format
+quality: "high"     # Output quality: "low", "medium", "high"
+format: "png"       # Output format: "png", "jpg"
+
+# Advanced settings
+color_matching: "lab"  # Color space for palette matching: "rgb", "lab", "hsv"
+dithering: false       # Apply dithering for smoother gradients
+preserve_transparency: true  # Keep transparent areas in PNG files
+</file>
+
+<file path="lib/algorithms/artistic.ts">
+import type { PixelizationAlgorithm } from "./types"
+import { rgbToLab } from "./utils/color"
+
+function findClosestColorArtistic(
+  targetRgb: [number, number, number],
+  palette: [number, number, number][],
+  x: number,
+  y: number,
+): [number, number, number] {
+  if (palette.length === 0) return targetRgb
+  const [targetL, targetA, targetB] = rgbToLab(targetRgb[0], targetRgb[1], targetRgb[2])
+  let minDistance = Number.POSITIVE_INFINITY
+  let closestColor = palette[0]!
+  for (const color of palette) {
+    const [l, a, b] = rgbToLab(color[0], color[1], color[2])
+    const deltaL = targetL - l
+    const deltaA = targetA - a
+    const deltaB = targetB - b
+    const spatialNoise = (Math.sin(x * 0.7) + Math.cos(y * 0.5)) * 2
+    const distance = Math.sqrt(deltaL * deltaL + deltaA * deltaA + deltaB * deltaB) + spatialNoise
+    if (distance < minDistance) {
+      minDistance = distance
+      closestColor = color
+    }
+  }
+  return closestColor
+}
+
+export const artisticAlgorithm: PixelizationAlgorithm = {
+  name: "Artistic",
+  description: "Spatial dithering with contrast enhancement for organic, stylized results",
+  process: (imageData, paletteRgb, gridSize) => {
+    const data = imageData.data
+    for (let y = 0; y < gridSize; y++) {
+      for (let x = 0; x < gridSize; x++) {
+        const i = (y * gridSize + x) * 4
+        const r = data[i] ?? 0
+        const g = data[i + 1] ?? 0
+        const b = data[i + 2] ?? 0
+        const enhancedR = Math.min(255, Math.max(0, (r - 128) * 1.2 + 128))
+        const enhancedG = Math.min(255, Math.max(0, (g - 128) * 1.2 + 128))
+        const enhancedB = Math.min(255, Math.max(0, (b - 128) * 1.2 + 128))
+        const closestColor = findClosestColorArtistic([enhancedR, enhancedG, enhancedB], paletteRgb, x, y)
+        data[i] = closestColor[0]
+        data[i + 1] = closestColor[1]
+        data[i + 2] = closestColor[2]
+      }
+    }
+    return imageData
+  },
+}
+</file>
+
+<file path="lib/algorithms/bayer.ts">
+import type { PixelizationAlgorithm } from "./types"
+import { rgbToLab } from "./utils/color"
+
+const BAYER_MATRIX_4x4 = [
+  [0, 8, 2, 10],
+  [12, 4, 14, 6],
+  [3, 11, 1, 9],
+  [15, 7, 13, 5],
+]
+
+function findClosestColorBayer(
+  targetRgb: [number, number, number],
+  palette: [number, number, number][],
+  x: number,
+  y: number,
+): [number, number, number] {
+  if (palette.length === 0) return targetRgb
+  const [targetL, targetA, targetB] = rgbToLab(targetRgb[0], targetRgb[1], targetRgb[2])
+  const bayerX = x % 4
+  const bayerY = y % 4
+  const bayerValue = (BAYER_MATRIX_4x4[bayerY]?.[bayerX] ?? 0) / 16.0
+
+  let minDistance = Number.POSITIVE_INFINITY
+  let closestColor = palette[0]!
+  let secondClosest = palette[1] ?? closestColor
+
+  for (const color of palette) {
+    const [l, a, b] = rgbToLab(color[0], color[1], color[2])
+    const distance = Math.sqrt(Math.pow(targetL - l, 2) + Math.pow(targetA - a, 2) + Math.pow(targetB - b, 2))
+    if (distance < minDistance) {
+      secondClosest = closestColor
+      minDistance = distance
+      closestColor = color
+    }
+  }
+
+  const brightness = (targetRgb[0] * 0.299 + targetRgb[1] * 0.587 + targetRgb[2] * 0.114) / 255
+  const closestBrightness = (closestColor[0] * 0.299 + closestColor[1] * 0.587 + closestColor[2] * 0.114) / 255
+  const secondBrightness = (secondClosest[0] * 0.299 + secondClosest[1] * 0.587 + secondClosest[2] * 0.114) / 255
+  const brightnessDiff = Math.abs(brightness - closestBrightness)
+  const shouldDither = bayerValue < brightnessDiff && Math.abs(brightness - secondBrightness) < brightnessDiff * 1.5
+  return shouldDither ? secondClosest : closestColor
+}
+
+export const bayerAlgorithm: PixelizationAlgorithm = {
+  name: "Bayer",
+  description: "Classic ordered dithering with 4×4 Bayer matrix for retro crosshatch patterns",
+  process: (imageData, paletteRgb, gridSize) => {
+    const data = imageData.data
+    for (let y = 0; y < gridSize; y++) {
+      for (let x = 0; x < gridSize; x++) {
+        const i = (y * gridSize + x) * 4
+        const r = data[i] ?? 0
+        const g = data[i + 1] ?? 0
+        const b = data[i + 2] ?? 0
+        const closestColor = findClosestColorBayer([r, g, b], paletteRgb, x, y)
+        data[i] = closestColor[0]
+        data[i + 1] = closestColor[1]
+        data[i + 2] = closestColor[2]
+      }
+    }
+    return imageData
+  },
+}
+</file>
+
+<file path="lib/algorithms/dual-color-dithering.ts">
+import type { PixelizationAlgorithm } from "./types"
+import { rgbToLab } from "./utils/color"
+
+function findTwoClosestColors(
+  targetRgb: [number, number, number],
+  palette: [number, number, number][],
+): [[number, number, number], [number, number, number]] {
+  if (palette.length === 0) return [targetRgb, targetRgb]
+  const [targetL, targetA, targetB] = rgbToLab(targetRgb[0], targetRgb[1], targetRgb[2])
+  let minDistance1 = Number.POSITIVE_INFINITY
+  let minDistance2 = Number.POSITIVE_INFINITY
+  let closestColor1 = palette[0]!
+  let closestColor2 = palette[1] ?? closestColor1
+  for (const color of palette) {
+    const [l, a, b] = rgbToLab(color[0], color[1], color[2])
+    const distance = Math.sqrt(Math.pow(targetL - l, 2) + Math.pow(targetA - a, 2) + Math.pow(targetB - b, 2))
+    if (distance < minDistance1) {
+      minDistance2 = minDistance1
+      closestColor2 = closestColor1
+      minDistance1 = distance
+      closestColor1 = color
+    } else if (distance < minDistance2 && distance !== minDistance1) {
+      minDistance2 = distance
+      closestColor2 = color
+    }
+  }
+  return [closestColor1, closestColor2]
+}
+
+export const dualColorDitheringAlgorithm: PixelizationAlgorithm = {
+  name: "Dual Color Dithering",
+  description: "Selective dithering between only the 2 closest palette colors for subtle gradients",
+  process: (imageData, paletteRgb, gridSize) => {
+    const data = imageData.data
+    const width = gridSize
+    const height = gridSize
+    const ditherThreshold = 20
+    for (let y = 0; y < height; y++) {
+      for (let x = 0; x < width; x++) {
+        const i = (y * width + x) * 4
+        const oldR = data[i] ?? 0
+        const oldG = data[i + 1] ?? 0
+        const oldB = data[i + 2] ?? 0
+        const [closestColor1, closestColor2] = findTwoClosestColors([oldR, oldG, oldB], paletteRgb)
+        const distributeError = (dx: number, dy: number, factor: number, errR: number, errG: number, errB: number) => {
+          const nx = x + dx
+          const ny = y + dy
+          if (nx >= 0 && nx < width && ny >= 0 && ny < height) {
+            const ni = (ny * width + nx) * 4
+            const baseR = data[ni] ?? 0
+            const baseG = data[ni + 1] ?? 0
+            const baseB = data[ni + 2] ?? 0
+            data[ni] = Math.max(0, Math.min(255, baseR + errR * factor))
+            data[ni + 1] = Math.max(0, Math.min(255, baseG + errG * factor))
+            data[ni + 2] = Math.max(0, Math.min(255, baseB + errB * factor))
+          }
+        }
+        // heuristic: choose between two closest colors using simple threshold on brightness
+        const brightness = (oldR * 0.299 + oldG * 0.587 + oldB * 0.114) / 255
+        const selectedColor = brightness > 0.5 ? closestColor1 : closestColor2
+        data[i] = selectedColor[0]
+        data[i + 1] = selectedColor[1]
+        data[i + 2] = selectedColor[2]
+        const errR = (oldR - selectedColor[0]) * 0.6
+        const errG = (oldG - selectedColor[1]) * 0.6
+        const errB = (oldB - selectedColor[2]) * 0.6
+        distributeError(1, 0, 7 / 16, errR, errG, errB)
+        distributeError(-1, 1, 3 / 16, errR, errG, errB)
+        distributeError(0, 1, 5 / 16, errR, errG, errB)
+        distributeError(1, 1, 1 / 16, errR, errG, errB)
+      }
+    }
+    return imageData
+  },
+}
+</file>
+
+<file path="lib/algorithms/edge-dithering.ts">
+import type { PixelizationAlgorithm } from "./types"
+import { rgbToLab } from "./utils/color"
+
+function findClosestColor(
+  targetRgb: [number, number, number],
+  palette: [number, number, number][],
+): [number, number, number] {
+  const [targetL, targetA, targetB] = rgbToLab(targetRgb[0], targetRgb[1], targetRgb[2])
+  let minDistance = Number.POSITIVE_INFINITY
+  let closestColor = palette[0]!
+  for (const color of palette) {
+    const [l, a, b] = rgbToLab(color[0], color[1], color[2])
+    const distance = Math.sqrt(Math.pow(targetL - l, 2) + Math.pow(targetA - a, 2) + Math.pow(targetB - b, 2))
+    if (distance < minDistance) {
+      minDistance = distance
+      closestColor = color
+    }
+  }
+  return closestColor
+}
+
+function detectEdge(data: Uint8ClampedArray, x: number, y: number, width: number, height: number): boolean {
+  if (x === 0 || y === 0 || x === width - 1 || y === height - 1) return false
+  const i = (y * width + x) * 4
+  const currentR = data[i] ?? 0
+  const currentG = data[i + 1] ?? 0
+  const currentB = data[i + 2] ?? 0
+  const neighbors: number[] = [
+    (y - 1) * width + x, // top
+    (y + 1) * width + x, // bottom
+    y * width + (x - 1), // left
+    y * width + (x + 1), // right
+  ]
+  for (const idx of neighbors) {
+    const ni = idx * 4
+    const nR = data[ni] ?? 0
+    const nG = data[ni + 1] ?? 0
+    const nB = data[ni + 2] ?? 0
+    const diff = Math.abs(currentR - nR) + Math.abs(currentG - nG) + Math.abs(currentB - nB)
+    if (diff > 80) return true
+  }
+  return false
+}
+
+export const edgeDitheringAlgorithm: PixelizationAlgorithm = {
+  name: "Edge Dithering",
+  description: "Selective dithering only near high-contrast edges for subtle texture",
+  process: (imageData, paletteRgb, gridSize) => {
+    const data = imageData.data
+    const width = gridSize
+    const height = gridSize
+    for (let y = 0; y < height; y++) {
+      for (let x = 0; x < width; x++) {
+        const i = (y * width + x) * 4
+        const oldR = data[i] ?? 0
+        const oldG = data[i + 1] ?? 0
+        const oldB = data[i + 2] ?? 0
+        const isEdge = detectEdge(data, x, y, width, height)
+        if (isEdge) {
+          const newColor = findClosestColor([oldR, oldG, oldB], paletteRgb)
+          data[i] = newColor[0]
+          data[i + 1] = newColor[1]
+          data[i + 2] = newColor[2]
+          const errR = oldR - newColor[0]
+          const errG = oldG - newColor[1]
+          const errB = oldB - newColor[2]
+          const distributeError = (dx: number, dy: number, factor: number) => {
+            const nx = x + dx
+            const ny = y + dy
+            if (nx >= 0 && nx < width && ny >= 0 && ny < height) {
+              const ni = (ny * width + nx) * 4
+              const baseR = data[ni] ?? 0
+              const baseG = data[ni + 1] ?? 0
+              const baseB = data[ni + 2] ?? 0
+              data[ni] = Math.max(0, Math.min(255, baseR + errR * factor))
+              data[ni + 1] = Math.max(0, Math.min(255, baseG + errG * factor))
+              data[ni + 2] = Math.max(0, Math.min(255, baseB + errB * factor))
+            }
+          }
+          distributeError(1, 0, 7 / 16)
+          distributeError(-1, 1, 3 / 16)
+          distributeError(0, 1, 5 / 16)
+          distributeError(1, 1, 1 / 16)
+        } else {
+          const closestColor = findClosestColor([oldR, oldG, oldB], paletteRgb)
+          data[i] = closestColor[0]
+          data[i + 1] = closestColor[1]
+          data[i + 2] = closestColor[2]
+        }
+      }
+    }
+    return imageData
+  },
+}
+</file>
+
+<file path="lib/algorithms/enhanced.ts">
+import type { PixelizationAlgorithm } from "./types"
+import { rgbToLab } from "./utils/color"
+
+function findClosestColorEnhanced(
+  targetRgb: [number, number, number],
+  palette: [number, number, number][],
+): [number, number, number] {
+  if (palette.length === 0) return targetRgb
+  const [targetL, targetA, targetB] = rgbToLab(targetRgb[0], targetRgb[1], targetRgb[2])
+
+  let minDistance = Number.POSITIVE_INFINITY
+  let closestColor = palette[0]!
+
+  for (const color of palette) {
+    const [l, a, b] = rgbToLab(color[0], color[1], color[2])
+    const deltaL = targetL - l
+    const deltaA = targetA - a
+    const deltaB = targetB - b
+    const distance = Math.sqrt(2 * deltaL * deltaL + 4 * deltaA * deltaA + deltaB * deltaB)
+    if (distance < minDistance) {
+      minDistance = distance
+      closestColor = color
+    }
+  }
+  return closestColor
+}
+
+export const enhancedAlgorithm: PixelizationAlgorithm = {
+  name: "Enhanced",
+  description: "Better color sampling with perceptual matching and 3×3 block averaging",
+  process: (imageData, paletteRgb) => {
+    const data = imageData.data
+    for (let i = 0; i < data.length; i += 4) {
+      const r = data[i] ?? 0
+      const g = data[i + 1] ?? 0
+      const b = data[i + 2] ?? 0
+      const closestColor = findClosestColorEnhanced([r, g, b], paletteRgb)
+      data[i] = closestColor[0]
+      data[i + 1] = closestColor[1]
+      data[i + 2] = closestColor[2]
+    }
+    return imageData
+  },
+}
+</file>
+
+<file path="lib/algorithms/floyd-steinberg.ts">
+import type { PixelizationAlgorithm } from "./types"
+import { rgbToLab } from "./utils/color"
+
+function findClosestColorFloyd(
+  targetRgb: [number, number, number],
+  palette: [number, number, number][],
+): [number, number, number] {
+  if (palette.length === 0) return targetRgb
+  const [targetL, targetA, targetB] = rgbToLab(targetRgb[0], targetRgb[1], targetRgb[2])
+  let minDistance = Number.POSITIVE_INFINITY
+  let closestColor = palette[0]!
+  for (const color of palette) {
+    const [l, a, b] = rgbToLab(color[0], color[1], color[2])
+    const distance = Math.sqrt(Math.pow(targetL - l, 2) + Math.pow(targetA - a, 2) + Math.pow(targetB - b, 2))
+    if (distance < minDistance) {
+      minDistance = distance
+      closestColor = color
+    }
+  }
+  return closestColor
+}
+
+export const floydSteinbergAlgorithm: PixelizationAlgorithm = {
+  name: "Floyd-Steinberg",
+  description: "Error diffusion dithering for smooth gradients and natural texture",
+  process: (imageData, paletteRgb, gridSize) => {
+    const data = imageData.data
+    const width = gridSize
+    const height = gridSize
+    for (let y = 0; y < height; y++) {
+      for (let x = 0; x < width; x++) {
+        const i = (y * width + x) * 4
+        const oldR = data[i] ?? 0
+        const oldG = data[i + 1] ?? 0
+        const oldB = data[i + 2] ?? 0
+        const newColor = findClosestColorFloyd([oldR, oldG, oldB], paletteRgb)
+        data[i] = newColor[0]
+        data[i + 1] = newColor[1]
+        data[i + 2] = newColor[2]
+        const errR = oldR - newColor[0]
+        const errG = oldG - newColor[1]
+        const errB = oldB - newColor[2]
+        const distributeError = (dx: number, dy: number, factor: number) => {
+          const nx = x + dx
+          const ny = y + dy
+          if (nx >= 0 && nx < width && ny >= 0 && ny < height) {
+            const ni = (ny * width + nx) * 4
+            const baseR = data[ni] ?? 0
+            const baseG = data[ni + 1] ?? 0
+            const baseB = data[ni + 2] ?? 0
+            data[ni] = Math.max(0, Math.min(255, baseR + errR * factor))
+            data[ni + 1] = Math.max(0, Math.min(255, baseG + errG * factor))
+            data[ni + 2] = Math.max(0, Math.min(255, baseB + errB * factor))
+          }
+        }
+        distributeError(1, 0, 7 / 16)
+        distributeError(-1, 1, 3 / 16)
+        distributeError(0, 1, 5 / 16)
+        distributeError(1, 1, 1 / 16)
+      }
+    }
+    return imageData
+  },
+}
+</file>
+
+<file path="lib/algorithms/ordered-selective.ts">
+import type { PixelizationAlgorithm } from "./types"
+import { rgbToLab } from "./utils/color"
+import { getColorDistance } from "./utils/color"
+
+const ORDERED_MATRIX_8x8 = [
+  [0, 32, 8, 40, 2, 34, 10, 42],
+  [48, 16, 56, 24, 50, 18, 58, 26],
+  [12, 44, 4, 36, 14, 46, 6, 38],
+  [60, 28, 52, 20, 62, 30, 54, 22],
+  [3, 35, 11, 43, 1, 33, 9, 41],
+  [51, 19, 59, 27, 49, 17, 57, 25],
+  [15, 47, 7, 39, 13, 45, 5, 37],
+  [63, 31, 55, 23, 61, 29, 53, 21],
+]
+
+function findClosestColor(
+  targetRgb: [number, number, number],
+  palette: [number, number, number][],
+): [number, number, number] {
+  if (palette.length === 0) return targetRgb
+  const [targetL, targetA, targetB] = rgbToLab(targetRgb[0], targetRgb[1], targetRgb[2])
+  let minDistance = Number.POSITIVE_INFINITY
+  let closestColor = palette[0]!
+  for (const color of palette) {
+    const [l, a, b] = rgbToLab(color[0], color[1], color[2])
+    const distance = Math.sqrt(Math.pow(targetL - l, 2) + Math.pow(targetA - a, 2) + Math.pow(targetB - b, 2))
+    if (distance < minDistance) {
+      minDistance = distance
+      closestColor = color
+    }
+  }
+  return closestColor
+}
+
+function findTwoClosestColors(
+  targetRgb: [number, number, number],
+  palette: [number, number, number][],
+): [[number, number, number], [number, number, number]] {
+  if (palette.length === 0) return [targetRgb, targetRgb]
+  const [targetL, targetA, targetB] = rgbToLab(targetRgb[0], targetRgb[1], targetRgb[2])
+  let minDistance1 = Number.POSITIVE_INFINITY
+  let minDistance2 = Number.POSITIVE_INFINITY
+  let closestColor1 = palette[0]!
+  let closestColor2 = palette[1] ?? closestColor1
+  for (const color of palette) {
+    const [l, a, b] = rgbToLab(color[0], color[1], color[2])
+    const distance = Math.sqrt(Math.pow(targetL - l, 2) + Math.pow(targetA - a, 2) + Math.pow(targetB - b, 2))
+    if (distance < minDistance1) {
+      minDistance2 = minDistance1
+      closestColor2 = closestColor1
+      minDistance1 = distance
+      closestColor1 = color
+    } else if (distance < minDistance2 && distance !== minDistance1) {
+      minDistance2 = distance
+      closestColor2 = color
+    }
+  }
+  return [closestColor1, closestColor2]
+}
+
+export const orderedSelectiveDitheringAlgorithm: PixelizationAlgorithm = {
+  name: "Ordered Selective",
+  description: "Selective dithering with consistent 8×8 ordered matrix pattern for structured texture",
+  process: (imageData, paletteRgb, gridSize) => {
+    const data = imageData.data
+    const width = gridSize
+    const height = gridSize
+    const ditherThreshold = 25
+    for (let y = 0; y < height; y++) {
+      for (let x = 0; x < width; x++) {
+        const i = (y * width + x) * 4
+        const oldR = data[i] ?? 0
+        const oldG = data[i + 1] ?? 0
+        const oldB = data[i + 2] ?? 0
+        const closestColor = findClosestColor([oldR, oldG, oldB], paletteRgb)
+        const distance = getColorDistance([oldR, oldG, oldB], closestColor)
+        if (distance > ditherThreshold) {
+          const matrixX = x % 8
+          const matrixY = y % 8
+          const threshold = (ORDERED_MATRIX_8x8[matrixY]?.[matrixX] ?? 0) / 64.0
+          const [color1, color2] = findTwoClosestColors([oldR, oldG, oldB], paletteRgb)
+          const brightness = (oldR * 0.299 + oldG * 0.587 + oldB * 0.114) / 255
+          const selectedColor = brightness > threshold ? color1 : color2
+          data[i] = selectedColor[0]
+          data[i + 1] = selectedColor[1]
+          data[i + 2] = selectedColor[2]
+        } else {
+          data[i] = closestColor[0]
+          data[i + 1] = closestColor[1]
+          data[i + 2] = closestColor[2]
+        }
+      }
+    }
+    return imageData
+  },
+}
+</file>
+
+<file path="lib/algorithms/randomized-selective.ts">
+import type { PixelizationAlgorithm } from "./types"
+import { rgbToLab } from "./utils/color"
+import { getColorDistance } from "./utils/color"
+
+function generateBlueNoise(x: number, y: number, seed: number): number {
+  const hash = (n: number) => {
+    n = ((n << 13) ^ n) - (n * (n * n * 15731 + 789221) + 1376312589)
+    return (n & 0x7fffffff) / 0x7fffffff
+  }
+  const noise1 = hash(x * 73 + y * 37 + seed)
+  const noise2 = hash(x * 113 + y * 67 + seed * 2)
+  const noise3 = hash(x * 151 + y * 97 + seed * 3)
+  return (noise1 * 0.5 + noise2 * 0.3 + noise3 * 0.2) % 1.0
+}
+
+function findClosestColor(
+  targetRgb: [number, number, number],
+  palette: [number, number, number][],
+): [number, number, number] {
+  if (palette.length === 0) return targetRgb
+  const [targetL, targetA, targetB] = rgbToLab(targetRgb[0], targetRgb[1], targetRgb[2])
+  let minDistance = Number.POSITIVE_INFINITY
+  let closestColor = palette[0]!
+  for (const color of palette) {
+    const [l, a, b] = rgbToLab(color[0], color[1], color[2])
+    const distance = Math.sqrt(Math.pow(targetL - l, 2) + Math.pow(targetA - a, 2) + Math.pow(targetB - b, 2))
+    if (distance < minDistance) {
+      minDistance = distance
+      closestColor = color
+    }
+  }
+  return closestColor
+}
+
+function findTwoClosestColors(
+  targetRgb: [number, number, number],
+  palette: [number, number, number][],
+): [[number, number, number], [number, number, number]] {
+  if (palette.length === 0) return [targetRgb, targetRgb]
+  const [targetL, targetA, targetB] = rgbToLab(targetRgb[0], targetRgb[1], targetRgb[2])
+  let minDistance1 = Number.POSITIVE_INFINITY
+  let minDistance2 = Number.POSITIVE_INFINITY
+  let closestColor1 = palette[0]!
+  let closestColor2 = palette[1] ?? closestColor1
+  for (const color of palette) {
+    const [l, a, b] = rgbToLab(color[0], color[1], color[2])
+    const distance = Math.sqrt(Math.pow(targetL - l, 2) + Math.pow(targetA - a, 2) + Math.pow(targetB - b, 2))
+    if (distance < minDistance1) {
+      minDistance2 = minDistance1
+      closestColor2 = closestColor1
+      minDistance1 = distance
+      closestColor1 = color
+    } else if (distance < minDistance2 && distance !== minDistance1) {
+      minDistance2 = distance
+      closestColor2 = color
+    }
+  }
+  return [closestColor1, closestColor2]
+}
+
+export const randomizedSelectiveDitheringAlgorithm: PixelizationAlgorithm = {
+  name: "Randomized Selective",
+  description: "Selective dithering with blue noise randomization for organic, natural texture",
+  process: (imageData, paletteRgb, gridSize) => {
+    const data = imageData.data
+    const width = gridSize
+    const height = gridSize
+    const ditherThreshold = 30
+    const seed = 12345
+    for (let y = 0; y < height; y++) {
+      for (let x = 0; x < width; x++) {
+        const i = (y * width + x) * 4
+        const oldR = data[i] ?? 0
+        const oldG = data[i + 1] ?? 0
+        const oldB = data[i + 2] ?? 0
+        const closestColor = findClosestColor([oldR, oldG, oldB], paletteRgb)
+        const distance = getColorDistance([oldR, oldG, oldB], closestColor)
+        if (distance > ditherThreshold) {
+          const noiseValue = generateBlueNoise(x, y, seed)
+          const [color1, color2] = findTwoClosestColors([oldR, oldG, oldB], paletteRgb)
+          const brightness = (oldR * 0.299 + oldG * 0.587 + oldB * 0.114) / 255
+          const adjustedBrightness = brightness + (noiseValue - 0.5) * 0.3
+          const selectedColor = adjustedBrightness > 0.5 ? color1 : color2
+          data[i] = selectedColor[0]
+          data[i + 1] = selectedColor[1]
+          data[i + 2] = selectedColor[2]
+        } else {
+          data[i] = closestColor[0]
+          data[i + 1] = closestColor[1]
+          data[i + 2] = closestColor[2]
+        }
+      }
+    }
+    return imageData
+  },
+}
+</file>
+
+<file path="lib/algorithms/selective-dithering.ts">
+import type { PixelizationAlgorithm } from "./types"
+import { getColorDistance } from "./utils/color"
+import { rgbToLab } from "./utils/color"
+
+function findClosestColor(
+  targetRgb: [number, number, number],
+  palette: [number, number, number][],
+): [number, number, number] {
+  if (palette.length === 0) return targetRgb
+  const [targetL, targetA, targetB] = rgbToLab(targetRgb[0], targetRgb[1], targetRgb[2])
+  let minDistance = Number.POSITIVE_INFINITY
+  let closestColor = palette[0]!
+  for (const color of palette) {
+    const [l, a, b] = rgbToLab(color[0], color[1], color[2])
+    const distance = Math.sqrt(Math.pow(targetL - l, 2) + Math.pow(targetA - a, 2) + Math.pow(targetB - b, 2))
+    if (distance < minDistance) {
+      minDistance = distance
+      closestColor = color
+    }
+  }
+  return closestColor
+}
+
+export const selectiveDitheringAlgorithm: PixelizationAlgorithm = {
+  name: "Selective Dithering",
+  description: "Dither only pixels that are far from palette colors, preserving good matches",
+  process: (imageData, paletteRgb, gridSize) => {
+    const data = imageData.data
+    const width = gridSize
+    const height = gridSize
+    const ditherThreshold = 25
+    for (let y = 0; y < height; y++) {
+      for (let x = 0; x < width; x++) {
+        const i = (y * width + x) * 4
+        const oldR = data[i] ?? 0
+        const oldG = data[i + 1] ?? 0
+        const oldB = data[i + 2] ?? 0
+        const closestColor = findClosestColor([oldR, oldG, oldB], paletteRgb)
+        const distance = getColorDistance([oldR, oldG, oldB], closestColor)
+        if (distance > ditherThreshold) {
+          data[i] = closestColor[0]
+          data[i + 1] = closestColor[1]
+          data[i + 2] = closestColor[2]
+          const errR = (oldR - closestColor[0]) * 0.5
+          const errG = (oldG - closestColor[1]) * 0.5
+          const errB = (oldB - closestColor[2]) * 0.5
+          const distributeError = (dx: number, dy: number, factor: number) => {
+            const nx = x + dx
+            const ny = y + dy
+            if (nx >= 0 && nx < width && ny >= 0 && ny < height) {
+              const ni = (ny * width + nx) * 4
+              const baseR = data[ni] ?? 0
+              const baseG = data[ni + 1] ?? 0
+              const baseB = data[ni + 2] ?? 0
+              data[ni] = Math.max(0, Math.min(255, baseR + errR * factor))
+              data[ni + 1] = Math.max(0, Math.min(255, baseG + errG * factor))
+              data[ni + 2] = Math.max(0, Math.min(255, baseB + errB * factor))
+            }
+          }
+          distributeError(1, 0, 7 / 16)
+          distributeError(-1, 1, 3 / 16)
+          distributeError(0, 1, 5 / 16)
+          distributeError(1, 1, 1 / 16)
+        } else {
+          data[i] = closestColor[0]
+          data[i + 1] = closestColor[1]
+          data[i + 2] = closestColor[2]
+        }
+      }
+    }
+    return imageData
+  },
+}
+</file>
+
+<file path="lib/algorithms/standard.ts">
+import type { PixelizationAlgorithm } from "./types"
+import { rgbToLab } from "./utils/color"
+
+function findClosestColor(
+  targetRgb: [number, number, number],
+  palette: [number, number, number][],
+): [number, number, number] {
+  if (palette.length === 0) return targetRgb
+  const [targetL, targetA, targetB] = rgbToLab(targetRgb[0], targetRgb[1], targetRgb[2])
+
+  let minDistance = Number.POSITIVE_INFINITY
+  let closestColor = palette[0]!
+
+  for (const color of palette) {
+    const [l, a, b] = rgbToLab(color[0], color[1], color[2])
+    const distance = Math.sqrt(Math.pow(targetL - l, 2) + Math.pow(targetA - a, 2) + Math.pow(targetB - b, 2))
+
+    if (distance < minDistance) {
+      minDistance = distance
+      closestColor = color
+    }
+  }
+
+  return closestColor
+}
+
+export const standardAlgorithm: PixelizationAlgorithm = {
+  name: "Standard",
+  description: "Fast, direct pixel mapping with LAB color space quantization",
+  process: (imageData, paletteRgb) => {
+    const data = imageData.data
+    for (let i = 0; i < data.length; i += 4) {
+      const r = data[i] ?? 0
+      const g = data[i + 1] ?? 0
+      const b = data[i + 2] ?? 0
+      const closestColor = findClosestColor([r, g, b], paletteRgb)
+      data[i] = closestColor[0]
+      data[i + 1] = closestColor[1]
+      data[i + 2] = closestColor[2]
+    }
+    return imageData
+  },
+}
+</file>
+
+<file path="lib/algorithms/types.ts">
+export interface PixelizationAlgorithm {
+  name: string
+  description: string
+  process: (imageData: ImageData, paletteRgb: [number, number, number][], gridSize: number) => ImageData
+}
+
+export interface ColorPalette {
+  name: string
+  colors: string[]
+}
+
+export interface PixelizationParams {
+  gridSize: number
+  palette: ColorPalette
+  noUpscale?: boolean
+}
+</file>
+
+<file path="lib/pixelizer/pixelizeImage.ts">
+import type { PixelizationParams } from "@/lib/algorithms"
+import { getAlgorithmByName } from "@/lib/algorithms"
+import { hexToRgb } from "@/lib/algorithms/utils/color"
+
+export async function pixelizeImage(
+  imageFile: File | string,
+  params: PixelizationParams,
+  algorithmName = "Standard",
+): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const algorithm = getAlgorithmByName(algorithmName)
+    if (!algorithm) {
+      reject(new Error(`Algorithm "${algorithmName}" not found`))
+      return
+    }
+
+    const canvas = document.createElement("canvas")
+    const ctx = canvas.getContext("2d")
+    if (!ctx) {
+      reject(new Error("Could not get canvas context"))
+      return
+    }
+
+    const img = new Image()
+    img.crossOrigin = "anonymous"
+
+    img.onload = () => {
+      try {
+        const paletteRgb: [number, number, number][] = params.palette.colors.map((hex) => hexToRgb(hex))
+        canvas.width = params.gridSize
+        canvas.height = params.gridSize
+        ctx.imageSmoothingEnabled = false
+        ctx.drawImage(img, 0, 0, img.width, img.height, 0, 0, params.gridSize, params.gridSize)
+        const imageData = ctx.getImageData(0, 0, params.gridSize, params.gridSize)
+        const processedImageData = algorithm.process(imageData, paletteRgb, params.gridSize)
+        ctx.putImageData(processedImageData, 0, 0)
+
+        const displaySize = params.noUpscale ? params.gridSize : 640
+        const maxScale = Math.floor(displaySize / params.gridSize)
+        const actualScale = Math.max(1, maxScale)
+        const scaledSize = params.gridSize * actualScale
+
+        const finalCanvas = document.createElement("canvas")
+        const finalCtx = finalCanvas.getContext("2d")!
+        finalCanvas.width = displaySize
+        finalCanvas.height = displaySize
+        finalCtx.fillStyle = "transparent"
+        finalCtx.fillRect(0, 0, displaySize, displaySize)
+        finalCtx.imageSmoothingEnabled = false
+        ;(finalCtx as any).webkitImageSmoothingEnabled = false
+        ;(finalCtx as any).mozImageSmoothingEnabled = false
+        ;(finalCtx as any).msImageSmoothingEnabled = false
+        const offsetXFinal = (displaySize - scaledSize) / 2
+        const offsetYFinal = (displaySize - scaledSize) / 2
+        finalCtx.drawImage(canvas, offsetXFinal, offsetYFinal, scaledSize, scaledSize)
+        resolve(finalCanvas.toDataURL("image/png"))
+      } catch (error) {
+        reject(error)
+      }
+    }
+
+    img.onerror = () => reject(new Error("Failed to load image"))
+
+    if (typeof imageFile === "string") {
+      img.src = imageFile
+    } else {
+      const reader = new FileReader()
+      reader.onload = (e) => {
+        img.src = e.target?.result as string
+      }
+      reader.readAsDataURL(imageFile)
+    }
+  })
+}
+</file>
+
+<file path="lib/utils.ts">
+import { clsx, type ClassValue } from "clsx"
+import { twMerge } from "tailwind-merge"
+
+export function cn(...inputs: ClassValue[]) {
+  return twMerge(clsx(inputs))
+}
+</file>
+
+<file path=".eslintrc.json">
+{
+  "extends": "next"
+}
+</file>
+
+<file path="BITCRUSH_UI_STANDALONE.md">
+## Bitcrush UI — Standalone HTML served by Bun
+
+This document describes the current Bitcrush UI precisely and shows how to implement it as a single, minimal HTML page served by Bun. It contains no component or framework details and assumes your backend exists elsewhere. The goal is a tiny, fast, portable front end you can open in a browser and later wire to any backend (Rust/Tauri, etc.).
+
+### What the UI includes
+
+- **Header**: a sticky top bar with the Bitcrush logo (`/bitcrush.png`).
+- **Subtle grid background**: faint animated grid overlay for depth.
+- **Ambient dots**: 12 tiny bouncing squares positioned deterministically.
+- **Main layout**: two columns on large screens; stacked on small screens.
+  - **Left column**
+    - Source Image: drag-and-drop or click-to-upload box with a small preview when selected.
+    - Color Palette: dropdown to pick a palette by name.
+    - Grid Resolution: dropdown with common square sizes.
+    - Algorithm: dropdown to select the pixelization algorithm.
+  - **Right column**
+    - Output panel: large preview area with pixelated rendering style.
+    - Primary button: “Generate Pixel Art”.
+    - Download section: buttons to download the generated image(s).
+
+Notes:
+- All actions are front-end only. The “Generate” button and downloads are wired to placeholders; replace those with your backend integration when ready.
+- The UI uses system fonts, inline CSS, and a few lines of vanilla JS. No frameworks.
+
+### Quick start (Bun + single-file HTML)
+
+1) Ensure Bun is installed (macOS):
+
+```bash
+brew install oven-sh/bun/bun
+```
+
+2) Create a tiny static server using Bun. Save this next to this document as `server.ts`:
+
+```ts
+// server.ts
+const textTypes = new Map([
+  [".html", "text/html; charset=utf-8"],
+  [".css", "text/css; charset=utf-8"],
+  [".js", "text/javascript; charset=utf-8"],
+  [".svg", "image/svg+xml"],
+  [".json", "application/json; charset=utf-8"],
+])
+
+function contentType(pathname: string): string {
+  for (const [ext, type] of textTypes) {
+    if (pathname.endsWith(ext)) return type
+  }
+  if (pathname.endsWith(".png")) return "image/png"
+  if (pathname.endsWith(".jpg") || pathname.endsWith(".jpeg")) return "image/jpeg"
+  if (pathname.endsWith(".webp")) return "image/webp"
+  if (pathname.endsWith(".ico")) return "image/x-icon"
+  return "application/octet-stream"
+}
+
+const cacheForever = {
+  headers: {
+    "Cache-Control": "public, max-age=31536000, immutable",
+  },
+}
+
+const noStore = {
+  headers: {
+    "Cache-Control": "no-store",
+  },
+}
+
+const server = Bun.serve({
+  port: Number(process.env.PORT || 3000),
+  async fetch(req) {
+    const url = new URL(req.url)
+    const { pathname } = url
+
+    // Root -> index.html
+    if (pathname === "/" || pathname === "/index.html") {
+      const file = Bun.file("./index.html")
+      if (!(await file.exists())) {
+        return new Response("index.html not found", { status: 404 })
+      }
+      return new Response(file, { headers: { "Content-Type": "text/html; charset=utf-8", ...noStore.headers } })
+    }
+
+    // Serve logo and any other static file in the working directory
+    const safe = pathname.replace(/^\/+/, "") // strip leading slashes
+    let file = Bun.file(`./${safe}`)
+    if (await file.exists()) {
+      return new Response(file, { headers: { "Content-Type": contentType(pathname), ...cacheForever.headers } })
+    }
+    // Fallback to ./public/* so existing assets like public/bitcrush.png work with /bitcrush.png
+    file = Bun.file(`./public/${safe}`)
+    if (await file.exists()) {
+      return new Response(file, { headers: { "Content-Type": contentType(pathname), ...cacheForever.headers } })
+    }
+
+    return new Response("Not found", { status: 404 })
+  },
+})
+
+console.log(`Bitcrush UI running: http://localhost:${server.port}`)
+```
+
+3) Save the standalone UI as `index.html` (also next to this document). This is a single file with inline CSS and minimal JS mirroring the current UI:
+
+```html
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Bitcrush</title>
+    <meta name="description" content="Bitcrush — Pixel art generator UI" />
+    <link rel="preload" as="image" href="/bitcrush.png" />
+    <style>
+      :root {
+        --bg: #0b0c0f;
+        --fg: #e7e7e9;
+        --muted-fg: #9aa0a6;
+        --muted: #1b1d23;
+        --border: #2a2e37;
+        --primary: #8ab4f8;
+        --surface: #101217;
+        --radius: 10px;
+      }
+      @media (prefers-color-scheme: light) {
+        :root {
+          --bg: #ffffff;
+          --fg: #0e1116;
+          --muted-fg: #616975;
+          --muted: #f5f7fb;
+          --border: #e5e7eb;
+          --surface: #ffffff;
+          --primary: #2563eb;
+        }
+      }
+
+      html, body {
+        height: 100%;
+      }
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--fg);
+        font: 14px/1.4 system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, Noto Sans, Helvetica Neue, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+      }
+
+      /* Header */
+      .header {
+        position: sticky;
+        top: 0;
+        z-index: 50;
+        backdrop-filter: blur(6px);
+        background: color-mix(in oklab, var(--bg), transparent 20%);
+        border-bottom: 1px solid color-mix(in oklab, var(--border), transparent 50%);
+      }
+      .header-inner {
+        max-width: 2000px;
+        margin: 0 auto;
+        padding: 12px 24px;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
+      .logo {
+        height: 24px;
+        display: block;
+      }
+
+      /* Subtle grid background */
+      .grid-bg {
+        position: absolute;
+        inset: 0;
+        pointer-events: none;
+        opacity: 0.06;
+      }
+      .grid-bg::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background-image: linear-gradient(90deg, transparent 24px, rgba(255,255,255,0.06) 25px, rgba(255,255,255,0.06) 26px, transparent 27px),
+                          linear-gradient(transparent 24px, rgba(255,255,255,0.06) 25px, rgba(255,255,255,0.06) 26px, transparent 27px);
+        background-size: 25px 25px;
+        animation: gridPulse 6s ease-in-out infinite alternate;
+      }
+      @keyframes gridPulse {
+        from { opacity: 0.8; }
+        to { opacity: 0.4; }
+      }
+
+      /* Ambient dots */
+      .dots {
+        position: absolute;
+        inset: 0;
+        overflow: hidden;
+        pointer-events: none;
+      }
+      .dot {
+        position: absolute;
+        width: 8px;
+        height: 8px;
+        border-radius: 2px;
+        background: color-mix(in oklab, var(--fg), transparent 90%);
+        animation-name: bounce;
+        animation-iteration-count: infinite;
+        animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+      }
+      @keyframes bounce {
+        0%, 100% { transform: translateY(-25%); }
+        50% { transform: translateY(0); }
+      }
+
+      /* Layout */
+      .container {
+        max-width: 2000px;
+        margin: 0 auto;
+        padding: 24px;
+        position: relative;
+        z-index: 1;
+      }
+      .columns {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 24px;
+      }
+      @media (min-width: 1280px) {
+        .columns { grid-template-columns: 1fr 1fr; }
+      }
+
+      /* Cards */
+      .card {
+        background: var(--surface);
+        border: 1px solid color-mix(in oklab, var(--border), transparent 50%);
+        border-radius: var(--radius);
+      }
+      .card-body {
+        padding: 16px;
+      }
+      .card-title {
+        font-size: 13px;
+        font-weight: 600;
+        margin: 0 0 12px 0;
+      }
+
+      /* Controls */
+      .field { margin: 0 0 12px 0; }
+      .label { display: block; font-size: 12px; margin: 0 0 8px 0; color: var(--muted-fg); }
+      .select, .button, .input {
+        appearance: none;
+        font: inherit;
+        color: inherit;
+        background: var(--surface);
+        border: 1px solid color-mix(in oklab, var(--border), transparent 40%);
+        border-radius: 8px;
+        padding: 8px 10px;
+      }
+      .select, .input { width: 100%; }
+      .button {
+        background: color-mix(in oklab, var(--primary), black 75%);
+        border: 1px solid color-mix(in oklab, var(--primary), black 50%);
+        color: white;
+        font-weight: 600;
+        cursor: pointer;
+        height: 40px;
+      }
+      .button[disabled] { opacity: 0.6; cursor: not-allowed; }
+
+      /* Uploader */
+      .dropzone {
+        border: 2px dashed color-mix(in oklab, var(--border), transparent 30%);
+        border-radius: 12px;
+        padding: 24px;
+        text-align: center;
+        color: var(--muted-fg);
+        cursor: pointer;
+        transition: border-color 120ms ease;
+      }
+      .dropzone:hover { border-color: var(--border); }
+      .thumb {
+        width: 80px; height: 80px; object-fit: cover; border-radius: 6px; display: block; margin: 0 auto 6px auto;
+      }
+      .hint { font-size: 12px; color: var(--muted-fg); }
+
+      /* Output */
+      .output {
+        width: 100%; height: 640px; border: 1px solid color-mix(in oklab, var(--border), transparent 50%);
+        background: color-mix(in oklab, var(--muted), transparent 70%);
+        display: flex; align-items: center; justify-content: center; border-radius: 10px;
+      }
+      .output-img { max-width: 100%; max-height: 100%; image-rendering: pixelated; object-fit: contain; }
+      .empty-state { text-align: center; color: var(--muted-fg); font-size: 12px; }
+
+      .spacer { height: 4px; }
+    </style>
+  </head>
+  <body>
+    <div class="grid-bg"></div>
+    <div class="dots" id="dots"></div>
+
+    <header class="header">
+      <div class="header-inner">
+        <img class="logo" src="/bitcrush.png" alt="Bitcrush" width="96" height="24" />
+      </div>
+    </header>
+
+    <main class="container">
+      <div class="columns">
+        <div>
+          <!-- Source Image -->
+          <section class="card">
+            <div class="card-body">
+              <h3 class="card-title">Source Image</h3>
+              <div id="dropzone" class="dropzone" role="button" tabindex="0" aria-label="Upload image">
+                <img id="thumb" class="thumb" src="" alt="Selected image" style="display:none" />
+                <div id="dropHint">
+                  <div style="margin-bottom:6px">Drop image here</div>
+                  <div class="hint">PNG, JPG up to 10MB</div>
+                </div>
+                <input id="file" type="file" accept="image/*" style="display:none" />
+              </div>
+            </div>
+          </section>
+
+          <!-- Color Palette -->
+          <section class="card">
+            <div class="card-body">
+              <h3 class="card-title">Color Palette</h3>
+              <div class="field">
+                <label class="label" for="palette">Palette</label>
+                <select id="palette" class="select" aria-label="Select palette">
+                  <!-- Placeholder options; replace with backend-driven list -->
+                  <option>Flying Tiger</option>
+                </select>
+              </div>
+            </div>
+          </section>
+
+          <!-- Grid Resolution -->
+          <section class="card">
+            <div class="card-body">
+              <h3 class="card-title">Grid Resolution</h3>
+              <div class="field">
+                <label class="label" for="grid">Resolution</label>
+                <select id="grid" class="select" aria-label="Select grid size">
+                  <option value="8">8×8</option>
+                  <option value="16">16×16</option>
+                  <option value="32" selected>32×32</option>
+                  <option value="64">64×64</option>
+                  <option value="80">80×80</option>
+                  <option value="96">96×96</option>
+                  <option value="128">128×128</option>
+                  <option value="192">192×192</option>
+                  <option value="256">256×256</option>
+                  <option value="288">288×288</option>
+                  <option value="384">384×384</option>
+                  <option value="512">512×512</option>
+                </select>
+              </div>
+            </div>
+          </section>
+
+          <!-- Algorithm -->
+          <section class="card">
+            <div class="card-body">
+              <h3 class="card-title">Algorithm</h3>
+              <div class="field">
+                <label class="label" for="algorithm">Method</label>
+                <select id="algorithm" class="select" aria-label="Select algorithm">
+                  <!-- Placeholder names; replace with backend-driven list -->
+                  <option>Standard</option>
+                  <option>Enhanced</option>
+                  <option>Artistic</option>
+                  <option>Bayer</option>
+                  <option>Floyd–Steinberg</option>
+                  <option>Dual Color Dithering</option>
+                  <option>Edge Dithering</option>
+                  <option>Selective Dithering</option>
+                  <option>Ordered Selective</option>
+                  <option>Randomized Selective</option>
+                </select>
+              </div>
+            </div>
+          </section>
+        </div>
+
+        <div>
+          <!-- Output -->
+          <section class="card">
+            <div class="card-body">
+              <div class="card-title" style="margin-bottom:12px">Output</div>
+              <div class="output">
+                <img id="output" class="output-img" alt="Pixelized result" src="" style="display:none" />
+                <div id="outputEmpty" class="empty-state">
+                  <div style="width:24px;height:24px;border:2px dashed color-mix(in oklab, var(--muted-fg), transparent 50%); border-radius:6px; margin:0 auto 6px"></div>
+                  <div>Preview will appear here</div>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <div class="spacer"></div>
+
+          <button id="generate" class="button" disabled>Generate Pixel Art</button>
+
+          <!-- Download Options (shown after generation) -->
+          <section id="downloads" class="card" style="display:none; margin-top:12px">
+            <div class="card-body">
+              <div class="card-title" style="margin-bottom:12px">Download Options</div>
+              <div style="display:flex; gap:8px; flex-wrap:wrap">
+                <button id="download-upscaled" class="button" disabled>Download Upscaled PNG</button>
+                <button id="download-base" class="button" disabled>Download Base PNG</button>
+              </div>
+            </div>
+          </section>
+        </div>
+      </div>
+    </main>
+
+    <script defer>
+      // Ambient dots (12 deterministic squares)
+      (function() {
+        const root = document.getElementById('dots')
+        for (let i = 0; i < 12; i++) {
+          const left = ((i * 73) % 100) + (i % 2 === 0 ? 0.5 : 0)
+          const top = ((i * 37) % 100) + (i % 3 === 0 ? 0.25 : 0)
+          const delay = ((i * 487) % 3000) / 1000
+          const duration = 3 + (((i * 911) % 2000) / 1000)
+          const el = document.createElement('div')
+          el.className = 'dot'
+          el.style.left = left + '%'
+          el.style.top = top + '%'
+          el.style.animationDelay = delay + 's'
+          el.style.animationDuration = duration + 's'
+          root.appendChild(el)
+        }
+      })()
+
+      // Simple UI state
+      const fileInput = document.getElementById('file')
+      const dropzone = document.getElementById('dropzone')
+      const thumb = document.getElementById('thumb')
+      const dropHint = document.getElementById('dropHint')
+      const output = document.getElementById('output')
+      const outputEmpty = document.getElementById('outputEmpty')
+      const palette = document.getElementById('palette')
+      const grid = document.getElementById('grid')
+      const algorithm = document.getElementById('algorithm')
+      const generate = document.getElementById('generate')
+      const downloads = document.getElementById('downloads')
+      const dlUpscaled = document.getElementById('download-upscaled')
+      const dlBase = document.getElementById('download-base')
+
+      let selectedImage = null
+      let pixelizedImage = null
+      let baseImage = null
+      let isProcessing = false
+
+      function setProcessing(val: boolean) {
+        isProcessing = val
+        generate.disabled = !selectedImage || isProcessing
+        generate.textContent = isProcessing ? 'Processing…' : 'Generate Pixel Art'
+      }
+
+      function setPreview(src: string | null) {
+        if (src) {
+          output.style.display = ''
+          output.src = src
+          outputEmpty.style.display = 'none'
+        } else {
+          output.style.display = 'none'
+          output.src = ''
+          outputEmpty.style.display = ''
+        }
+      }
+
+      function enableDownloads(upscaled: string | null, base: string | null) {
+        downloads.style.display = upscaled || base ? '' : 'none'
+        dlUpscaled.disabled = !upscaled
+        dlBase.disabled = !base
+      }
+
+      function downloadDataURL(dataURL: string, filename: string) {
+        const a = document.createElement('a')
+        a.href = dataURL
+        a.download = filename
+        document.body.appendChild(a)
+        a.click()
+        a.remove()
+      }
+
+      dlUpscaled.addEventListener('click', () => {
+        if (pixelizedImage) downloadDataURL(pixelizedImage, 'bitcrush-upscaled.png')
+      })
+      dlBase.addEventListener('click', () => {
+        if (baseImage) downloadDataURL(baseImage, 'bitcrush-base.png')
+      })
+
+      function handleFile(file: File) {
+        const reader = new FileReader()
+        reader.onload = (e) => {
+          selectedImage = String(e.target && e.target.result || '')
+          thumb.src = selectedImage
+          thumb.style.display = ''
+          dropHint.style.display = 'none'
+          generate.disabled = !selectedImage
+          setPreview(null)
+          pixelizedImage = null
+          baseImage = null
+          enableDownloads(null, null)
+        }
+        reader.readAsDataURL(file)
+      }
+
+      dropzone.addEventListener('click', () => fileInput.click())
+      dropzone.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') fileInput.click() })
+      dropzone.addEventListener('dragover', (e) => { e.preventDefault(); })
+      dropzone.addEventListener('drop', (e) => {
+        e.preventDefault()
+        const file = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0]
+        if (file) handleFile(file)
+      })
+      fileInput.addEventListener('change', (e) => {
+        const tgt = e.target
+        const file = tgt && tgt.files && tgt.files[0]
+        if (file) handleFile(file)
+      })
+
+      // Placeholder generation — replace with your backend integration
+      async function generatePixelArt() {
+        if (!selectedImage) return
+        setProcessing(true)
+        try {
+          const params = {
+            gridSize: Number(grid.value),
+            paletteName: palette.value,
+            algorithm: algorithm.value,
+          }
+          // If a backend is available on window.Bitcrush.generate, call it; otherwise stub.
+          // Expected backend return: { upscaledDataURL: string, baseDataURL: string }
+          const gen = (typeof window !== 'undefined' && window.Bitcrush && window.Bitcrush.generate)
+            ? window.Bitcrush.generate(selectedImage, params)
+            : new Promise((resolve) => setTimeout(() => resolve({ upscaledDataURL: selectedImage, baseDataURL: selectedImage }), 500))
+
+          const result = await gen
+          const upscaledDataURL = result && result.upscaledDataURL || selectedImage
+          const baseDataURL = result && result.baseDataURL || selectedImage
+          pixelizedImage = upscaledDataURL
+          baseImage = baseDataURL
+          setPreview(pixelizedImage)
+          enableDownloads(pixelizedImage, baseImage)
+        } catch (err) {
+          console.error(err)
+          // On error, show the original to avoid a blank screen
+          pixelizedImage = selectedImage
+          baseImage = selectedImage
+          setPreview(pixelizedImage)
+          enableDownloads(pixelizedImage, baseImage)
+        } finally {
+          setProcessing(false)
+        }
+      }
+
+      generate.addEventListener('click', generatePixelArt)
+    </script>
+  </body>
+  </html>
+```
+
+4) Start the server:
+
+```bash
+bun run server.ts | cat
+```
+
+Then open `http://localhost:3000` in your browser.
+
+### Hooking up your backend later (placeholders already in place)
+
+- Replace the placeholder generation function with your real backend call. For example, in a desktop app you might expose a global `window.Bitcrush.generate(imageSrc, { gridSize, paletteName, algorithm })` that returns `{ upscaledDataURL, baseDataURL }`.
+- Populate the “Color Palette” and “Algorithm” dropdowns from your backend or an injected global (e.g., `window.__PALETTES__`, `window.__ALGORITHMS__`) if you prefer to avoid network requests.
+
+### Performance notes
+
+- Single HTML file with inline CSS and minimal JS; no runtime dependencies.
+- Uses system fonts (no webfont cost).
+- Small deterministic ambient animation, minimal repaint.
+- Asset caching headers for static files (logo) via Bun server; `index.html` served with `no-store` to avoid stale UI during local development.
+
+### Accessibility notes
+
+- All interactive controls are labeled (`aria-label` / associated `<label>`s).
+- Drag-and-drop area is keyboard-accessible (Enter/Space) and clickable.
+- Color contrast targets dark and light modes with `prefers-color-scheme`.
+
+This is the smallest faithful reproduction of the current Bitcrush UI using plain HTML/CSS/JS and Bun as the server—with clear placeholders ready to connect to your backend.
+</file>
+
+<file path="app/(bitcrush)/_components/ImageUploader.tsx">
+"use client"
+
+import Image from "next/image"
+import { useRef } from "react"
+import { Upload } from "lucide-react"
+
+interface ImageUploaderProps {
+  value: string | null
+  onChange: (dataUrl: string) => void
+}
+
+export function ImageUploader({ value, onChange }: ImageUploaderProps) {
+  const fileInputRef = useRef<HTMLInputElement>(null)
+
+  const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (file) {
+      const reader = new FileReader()
+      reader.onload = (e) => {
+        onChange(e.target?.result as string)
+      }
+      reader.readAsDataURL(file)
+    }
+  }
+
+  return (
+    <div>
+      <div
+        className="border-2 border-dashed border-border/50 rounded-lg p-6 text-center cursor-pointer hover:border-border transition-colors"
+        onClick={() => fileInputRef.current?.click()}
+      >
+        {value ? (
+          <div className="space-y-2">
+            <div className="relative w-20 h-20 mx-auto">
+              <Image
+                src={value || "/placeholder.svg"}
+                alt="Selected"
+                fill
+                sizes="80px"
+                className="object-cover rounded-md"
+                unoptimized
+              />
+            </div>
+            <p className="text-xs text-muted-foreground">Click to change</p>
+          </div>
+        ) : (
+          <div className="space-y-2">
+            <Upload className="w-6 h-6 text-muted-foreground mx-auto" />
+            <div>
+              <p className="text-sm font-medium">Drop image here</p>
+              <p className="text-xs text-muted-foreground">PNG, JPG up to 10MB</p>
+            </div>
+          </div>
+        )}
+      </div>
+      <input ref={fileInputRef} type="file" accept="image/*" onChange={handleImageUpload} className="hidden" />
+    </div>
+  )
+}
+</file>
+
+<file path="app/(bitcrush)/_components/OutputPreview.tsx">
+"use client"
+
+import Image from "next/image"
+
+interface OutputPreviewProps {
+  image: string | null
+}
+
+export function OutputPreview({ image }: OutputPreviewProps) {
+  return (
+    <div className="relative w-full h-[640px] bg-muted/30 border border-border/30">
+      {image ? (
+        <Image
+          src={image || "/placeholder.svg"}
+          alt="Pixelized result"
+          fill
+          sizes="100vw"
+          className="object-contain"
+          style={{ imageRendering: "pixelated" }}
+          unoptimized
+        />
+      ) : (
+        <div className="absolute inset-0 flex items-center justify-center text-center space-y-2">
+          <div>
+            <div className="w-6 h-6 border-2 border-dashed border-muted-foreground/50 rounded mx-auto" />
+            <p className="text-xs text-muted-foreground mt-2">Preview will appear here</p>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+</file>
+
+<file path="app/(bitcrush)/_components/PalettePicker.tsx">
+"use client"
+
+import { useState, useRef } from "react"
+import { ChevronDown } from "lucide-react"
+import type { ColorPalette } from "@/lib/algorithms"
+
+interface PalettePickerProps {
+  palettes: ColorPalette[]
+  value: string
+  onChange: (name: string) => void
+}
+
+export function PalettePicker({ palettes, value, onChange }: PalettePickerProps) {
+  const [open, setOpen] = useState(false)
+  const buttonRef = useRef<HTMLButtonElement>(null)
+  const selected = palettes.find((p) => p.name === value) ?? palettes[0] ?? { name: "Default", colors: [] }
+
+  return (
+    <div className="relative">
+      <button
+        ref={buttonRef}
+        onClick={() => setOpen(!open)}
+        className="w-full p-3 rounded-md border border-border/50 hover:border-border transition-colors flex items-center justify-between"
+      >
+        <div className="flex items-center gap-2">
+          <span className="text-sm font-medium">{selected.name}</span>
+          <div className="flex gap-1">
+            {selected.colors.slice(0, 6).map((color, index) => (
+              <div key={index} className="w-3 h-3 rounded-sm border border-border/30" style={{ backgroundColor: color }} />
+            ))}
+          </div>
+        </div>
+        <ChevronDown className={`w-4 h-4 transition-transform ${open ? "rotate-180" : ""}`} />
+      </button>
+      {open && (
+        <div className="absolute top-full left-0 right-0 mt-1 bg-background border border-border/50 rounded-md shadow-lg z-[100] max-h-60 overflow-y-auto">
+          {palettes.map((palette) => (
+            <button
+              key={palette.name}
+              onClick={() => {
+                onChange(palette.name)
+                setOpen(false)
+              }}
+              className={`w-full p-3 text-left hover:bg-muted/50 transition-colors border-b border-border/30 last:border-b-0 ${
+                value === palette.name ? "bg-muted/50" : ""
+              }`}
+            >
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium">{palette.name}</span>
+                <div className="flex gap-1">
+                  {palette.colors.slice(0, 8).map((color, index) => (
+                    <div key={index} className="w-2 h-2 rounded-sm border border-border/30" style={{ backgroundColor: color }} />
+                  ))}
+                </div>
+              </div>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+</file>
+
+<file path="app/(bitcrush)/_hooks/usePixelization.ts">
+"use client"
+
+import { useState, useCallback } from "react"
+import type { PixelizationParams } from "@/lib/algorithms"
+import { pixelizeImage } from "@/lib/pixelizer/pixelizeImage"
+
+export function usePixelization() {
+  const [isProcessing, setIsProcessing] = useState(false)
+  const [pixelizedImage, setPixelizedImage] = useState<string | null>(null)
+  const [baseResolutionImage, setBaseResolutionImage] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(null)
+
+  const processImage = useCallback(async (imageSrc: string, params: PixelizationParams, algorithmName: string) => {
+    setIsProcessing(true)
+    setError(null)
+    try {
+      const upscaled = await pixelizeImage(imageSrc, params, algorithmName)
+      setPixelizedImage(upscaled)
+      const base = await pixelizeImage(imageSrc, { ...params, noUpscale: true }, algorithmName)
+      setBaseResolutionImage(base)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Pixelization failed")
+      setPixelizedImage(imageSrc)
+      setBaseResolutionImage(imageSrc)
+    } finally {
+      setIsProcessing(false)
+    }
+  }, [])
+
+  return { isProcessing, pixelizedImage, baseResolutionImage, error, processImage }
+}
+</file>
+
+<file path="lib/algorithms/utils/color.ts">
+export function hexToRgb(hex: string): [number, number, number] {
+  const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex)
+  if (!result) throw new Error(`Invalid hex color: ${hex}`)
+  const r = Number.parseInt(result[1] ?? "00", 16)
+  const g = Number.parseInt(result[2] ?? "00", 16)
+  const b = Number.parseInt(result[3] ?? "00", 16)
+  return [r, g, b]
+}
+
+export function rgbToLab(r: number, g: number, b: number): [number, number, number] {
+  let rNorm = r / 255
+  let gNorm = g / 255
+  let bNorm = b / 255
+
+  rNorm = rNorm > 0.04045 ? Math.pow((rNorm + 0.055) / 1.055, 2.4) : rNorm / 12.92
+  gNorm = gNorm > 0.04045 ? Math.pow((gNorm + 0.055) / 1.055, 2.4) : gNorm / 12.92
+  bNorm = bNorm > 0.04045 ? Math.pow((bNorm + 0.055) / 1.055, 2.4) : bNorm / 12.92
+
+  let x = rNorm * 0.4124564 + gNorm * 0.3575761 + bNorm * 0.1804375
+  let y = rNorm * 0.2126729 + gNorm * 0.7151522 + bNorm * 0.072175
+  let z = rNorm * 0.0193339 + gNorm * 0.119192 + bNorm * 0.9503041
+
+  x /= 0.95047
+  y /= 1.0
+  z /= 1.08883
+
+  const fx = x > 0.008856 ? Math.cbrt(x) : 7.787 * x + 16 / 116
+  const fy = y > 0.008856 ? Math.cbrt(y) : 7.787 * y + 16 / 116
+  const fz = z > 0.008856 ? Math.cbrt(z) : 7.787 * z + 16 / 116
+
+  const L = 116 * fy - 16
+  const A = 500 * (fx - fy)
+  const B = 200 * (fy - fz)
+  return [L, A, B]
+}
+
+export function getColorDistance(rgb1: [number, number, number], rgb2: [number, number, number]): number {
+  const [l1, a1, b1] = rgbToLab(rgb1[0], rgb1[1], rgb1[2])
+  const [l2, a2, b2] = rgbToLab(rgb2[0], rgb2[1], rgb2[2])
+  return Math.sqrt(Math.pow(l1 - l2, 2) + Math.pow(a1 - a2, 2) + Math.pow(b1 - b2, 2))
+}
+</file>
+
+<file path="lib/algorithms/index.ts">
+import type { PixelizationAlgorithm } from "./types"
+import { standardAlgorithm } from "./standard"
+import { enhancedAlgorithm } from "./enhanced"
+import { artisticAlgorithm } from "./artistic"
+import { bayerAlgorithm } from "./bayer"
+import { floydSteinbergAlgorithm } from "./floyd-steinberg"
+import { dualColorDitheringAlgorithm } from "./dual-color-dithering"
+import { edgeDitheringAlgorithm } from "./edge-dithering"
+import { selectiveDitheringAlgorithm } from "./selective-dithering"
+import { orderedSelectiveDitheringAlgorithm } from "./ordered-selective"
+import { randomizedSelectiveDitheringAlgorithm } from "./randomized-selective"
+
+export { type PixelizationAlgorithm, type ColorPalette, type PixelizationParams } from "./types"
+export {
+  standardAlgorithm,
+  enhancedAlgorithm,
+  artisticAlgorithm,
+  bayerAlgorithm,
+  floydSteinbergAlgorithm,
+  dualColorDitheringAlgorithm,
+  edgeDitheringAlgorithm,
+  selectiveDitheringAlgorithm,
+  orderedSelectiveDitheringAlgorithm,
+  randomizedSelectiveDitheringAlgorithm,
+}
+
+export const ALGORITHMS: PixelizationAlgorithm[] = [
+  standardAlgorithm,
+  enhancedAlgorithm,
+  artisticAlgorithm,
+  bayerAlgorithm,
+  floydSteinbergAlgorithm,
+  dualColorDitheringAlgorithm,
+  edgeDitheringAlgorithm,
+  selectiveDitheringAlgorithm,
+  orderedSelectiveDitheringAlgorithm,
+  randomizedSelectiveDitheringAlgorithm,
+]
+
+export function getAlgorithmByName(name: string): PixelizationAlgorithm | undefined {
+  return ALGORITHMS.find((algo) => algo.name === name)
+}
+</file>
+
+<file path="lib/algorithms.ts">
+// Types
+// Compatibility re-export: point imports from "@/lib/algorithms" to the folder index
+export * from "./algorithms/index"
+</file>
+
+<file path=".gitignore">
+# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
+
+# dependencies
+/node_modules
+
+# next.js
+/.next/
+/out/
+
+# production
+/build
+
+# debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# env files
+.env*
+
+# vercel
+.vercel
+
+# typescript
+*.tsbuildinfo
+next-env.d.ts
+</file>
+
+<file path="components.json">
+{
+  "$schema": "https://ui.shadcn.com/schema.json",
+  "style": "new-york",
+  "rsc": true,
+  "tsx": true,
+  "tailwind": {
+    "config": "",
+    "css": "app/globals.css",
+    "baseColor": "neutral",
+    "cssVariables": true,
+    "prefix": ""
+  },
+  "aliases": {
+    "components": "@/components",
+    "utils": "@/lib/utils",
+    "ui": "@/components/ui",
+    "lib": "@/lib",
+    "hooks": "@/hooks"
+  },
+  "iconLibrary": "lucide"
+}
+</file>
+
+<file path="postcss.config.mjs">
+/** @type {import('postcss-load-config').Config} */
+const config = {
+  plugins: {
+    "@tailwindcss/postcss": {},
+  },
+}
+
+export default config
+</file>
+
+<file path="REWRITE_PLAN.md">
+# Bitcrush desktop rewrite plan (Rust engine + Tauri 2, Vite + TS UI shell)
+
+This document outlines the minimum plan to rebuild Bitcrush as a desktop‑only app using:
+
+- Bun to run Vite scripts
+- TypeScript UI shell (no styling scope)
+- Tauri 2 desktop shell with IPC
+- Rust-native image engine for all processing and exports
+
+The plan prioritizes feature parity and performance while keeping the architecture simple and maintainable. No extra features are added beyond achieving parity and a clean desktop experience.
+
+---
+
+## 1) Scope
+
+- Goals
+  - Desktop‑only parity: image input, algorithm selection, grid size, palette, preview, export.
+  - UI is minimal; Rust performs all image work.
+  - Tauri 2 for file dialogs and filesystem.
+- Non‑goals
+  - No TS/WebWorker engine.
+  - No GPU in v1.
+  - No UI styling.
+- Acceptance criteria
+  - Side‑by‑side comparison with the current app produces visually equivalent outputs across all algorithms on a set of reference images.
+  - Desktop builds run on macOS (primary), with configuration ready for Windows/Linux builds.
+  - PNG export works for both base resolution and upscaled images.
+
+---
+
+## 2) What we’re porting
+
+- Algorithms: port all to Rust with the same names/behavior.
+- Pipeline: scale to grid, process, upscale/center to 640 px display — in Rust.
+- Config: palettes in `config/palettes.ts` and additional palette files in `config/gpl-palettes/`.
+- UI: Next.js components for algorithm selection, grid size, palette picker, uploader, preview, downloads.
+- Hook: `usePixelization.ts` orchestrates processing and dual output (base and upscaled).
+
+Parity scope is defined by the above. Visual equivalence is measured on base grid and the upscaled 640‑px display rendering.
+
+---
+
+## 3) Architecture (minimal)
+
+- UI shell (TS): minimal DOM bindings; IPC to Rust.
+- Tauri 2 + Rust engine: all algorithms + I/O.
+- Commands: `load_image`, `set_params`, `render_preview`, `render_base`, `export_png`, `list_palettes`.
+
+### Data flow (minimal)
+
+- UI selects image → Rust decodes/processes → returns preview PNG bytes → UI displays → export writes via Rust.
+
+---
+
+## 4) Tech stack
+
+- Bun (run Vite and scripts), Vite 6, TS 5 for UI shell
+- Tauri 2 + Rust 1.7x
+- Rust crates: `image`, `rayon`, optional SIMD (`wide`), `tauri`, `serde`, `toml`
+
+### Notes
+
+- Avoid Node/Vite; rely on Bun CLI and runtime.
+- Keep Tauri configuration minimal: `beforeDevCommand`, `devUrl`, `beforeBuildCommand`, `distDir`, and permissions only for APIs we actually use.
+
+---
+
+## 5) Project layout
+
+```text
+bitcrush/
+  index.html                  # Root HTML (Vite serves this)
+  src/
+    assets/
+      (icons, logos, etc.)
+    styles.css                # Global styles
+    main.ts                   # UI bootstrap; binds DOM and IPC
+    state/
+      appState.ts             # UI state (selected algo, palette, grid)
+      types.ts                # Minimal IPC types
+    ui/
+      controls.ts             # Minimal: wire inputs to IPC
+      preview.ts              # Render PNG bytes from Rust
+    # No TS palettes config; palettes come from Rust via IPC
+
+  dist/                       # Vite build output (frontendDist)
+
+  src-tauri/
+    capabilities/
+      default.json            # Capabilities for main window
+    resources/
+      palettes/               # All palettes live here
+        gpl/                  # Drop .gpl files here
+        palettes.toml         # Additional palettes defined in TOML
+    src/
+      lib.rs                  # Tauri builder and commands
+      main.rs                 # Entry, calls run()
+      engine/
+        lib.rs                # Rust image engine (all algorithms)
+        algorithms/           # Ports of algorithms
+        color.rs
+        quant.rs
+        dither/
+          floyd_steinberg.rs
+          ordered.rs
+          selective.rs
+          edge.rs
+          dual_color.rs
+        pipeline.rs
+        io.rs
+    Cargo.toml
+    tauri.conf.json           # Tauri 2 configuration
+
+  package.json                # Vite scripts executed by Bun
+  vite.config.ts              # Dev server: port 1420, HMR 1421; ignore src-tauri
+  tsconfig.json
+  README.md                   # Dev/build instructions
+```
+
+---
+
+## 6) Build, dev, packaging
+
+- Frontend build (Vite via Bun)
+  - Entry: `index.html` + `src/main.ts`.
+  - Output: `dist/` (referenced as `frontendDist` by Tauri).
+
+Commands
+
+```bash
+bun install
+bun run dev           # Vite dev server on 1420 (HMR 1421)
+bun run build         # Vite build → dist/
+```
+
+- Tauri 2 configuration (high level)
+  - devUrl: `http://localhost:1420` (Vite) with HMR at 1421 when TAURI_DEV_HOST set.
+  - beforeDevCommand: `bun run dev`
+  - beforeBuildCommand: `bun run build`
+  - frontendDist: `../dist`
+  - Capabilities: `capabilities/default.json` with `core:default`, `opener:default` (extend as needed).
+  - Permissions: enable only `dialog` and `fs` (read/write) when added.
+  - Rust commands: `load_image`, `render_preview`, `render_base`, `export_png`, `list_palettes`.
+
+- Tauri dev/build
+
+```bash
+cargo tauri dev
+cargo tauri build
+```
+
+---
+
+## 7) IPC surfaces (what UI calls)
+
+- `load_image(path | bytes)`
+- `set_params({ algorithmName, gridSize, paletteId })`
+- `render_preview()` → PNG bytes
+- `render_base()` → PNG bytes
+- `export_png(path, { variant: "preview" | "base" })`
+- `list_palettes()` → core + .gpl palettes (names + colors)
+
+---
+
+## 8) Pixelization engine (Rust)
+
+- Pipeline: decode → resize to grid → algorithm process → upscale to 640 → encode PNG
+- Registry mirrors existing names/descriptions
+
+### Performance notes
+
+- `rayon` parallel rows/tiles; optional SIMD (`wide`)
+- Reuse buffers; avoid reallocations; stride-aware loops
+- Previews as PNG bytes; exports written in Rust
+
+---
+
+## 9) (Optional later) GPU path
+
+- If needed, evaluate `wgpu` for upscale or selected kernels; not in v1
+
+---
+
+## 10) File handling and palettes
+
+- Open image
+  - Primary: standard `<input type="file">` / drag‑drop with object URLs.
+  - Optional (desktop‑native): Tauri `dialog::FileDialog` to select a file and read via `fs` if needed.
+- Save image
+  - Use Tauri `dialog` (save) to choose a path and `fs` to write PNG bytes.
+- Palettes
+  - `.gpl` files under `src-tauri/resources/palettes/gpl/` loaded at runtime
+  - `palettes.toml` under `src-tauri/resources/palettes/` for additional palettes
+  - `list_palettes` merges all sources and returns names + colors
+
+---
+
+## 11) Types and parameters
+
+- Mirror existing types; define once in Rust and a minimal TS mirror for UI only:
+  - `PixelizationParams` (gridSize, palette name or id, algorithm name)
+  - `ColorPalette` (name, hex colors)
+  - `Algorithm` (name, description)
+- Source of truth is Rust. TS types are generated or hand‑kept minimal for IPC payloads.
+
+---
+
+## 12) Testing (minimal)
+
+- Rust: a few small golden fixtures per algorithm to guard regressions
+- Manual UI smoke: load → preview → base → export
+
+---
+
+## 13) Migration
+
+- `lib/algorithms/**/*` → `src-tauri/src/engine/algorithms/**/*` (Rust)
+- `lib/pixelizer/pixelizeImage.ts` → `src-tauri/src/engine/pipeline.rs`
+- `config/palettes.ts` → `src-tauri/src/engine/palettes.rs` (embedded)
+
+---
+
+## 14) Step-by-step implementation plan
+
+1. Repo bootstrap
+   - Initialize Tauri 2 app (`src-tauri/`), Bun project, TS config, and basic `index.html`.
+   - Add Bun scripts: `dev`, `build`, `test`.
+2. Minimal UI shell
+   - Static HTML layout, CSS tokens, and controls placeholders.
+3. Rust engine scaffolding
+   - Create `src-tauri/src/engine` with pipeline, algorithms, color/quant modules.
+   - Add Tauri commands for image load/render/export.
+4. Port algorithms to Rust
+   - Implement Standard, Enhanced, Artistic, Bayer, Floyd-Steinberg, Dual Color, Edge, Selective, Ordered Selective, Randomized Selective.
+5. Palettes
+   - Embed core palettes; implement `.gpl` loader; expose to UI.
+6. UI wiring: call IPC; render preview/base PNG bytes
+7. Packaging: `bun run build` + `cargo tauri build`
+
+---
+
+## 15) Timeline (indicative)
+
+- Week 1: Bootstrap, engine scaffolding, IPC commands
+- Week 2: Port algorithms, embed palettes
+- Week 3: Previews/exports + packaging
+
+---
+
+## 16) Risks and mitigations
+
+- IPC throughput and memory copies
+  - Keep previews as PNG bytes; write large exports directly from Rust.
+- Pixel parity differences (color rounding/sampling)
+  - Use small fixtures and edge‑case tests; keep math identical to original.
+- Tauri permission friction
+  - Enable only required APIs; keep file operations explicit.
+
+---
+
+## 17) Developer commands (reference)
+
+```bash
+# Install deps
+bun install
+
+# Run desktop app in dev (spawns Bun dev server via Tauri beforeDevCommand)
+cargo tauri dev
+
+# Build frontend assets
+bun run build
+
+# Package desktop app
+cargo tauri build
+
+# Run tests
+bun test
+```
+
+This plan is deliberately incremental to reach feature parity quickly, keep risk low, and leave room for an optional native engine once parity and packaging are solid.
+</file>
+
+<file path="next.config.mjs">
+/** @type {import('next').NextConfig} */
+const nextConfig = {
+  eslint: {
+    ignoreDuringBuilds: false,
+  },
+  typescript: {
+    ignoreBuildErrors: false,
+  },
+  images: {
+    unoptimized: true,
+  },
+}
+
+export default nextConfig
+</file>
+
+<file path="tsconfig.json">
+{
+  "compilerOptions": {
+    // Environment setup & latest features
+    "lib": [
+      "ESNext",
+      "DOM"
+    ],
+    "target": "ESNext",
+    "module": "Preserve",
+    "moduleDetection": "force",
+    "jsx": "preserve",
+    "allowJs": true,
+    // Bundler mode
+    "moduleResolution": "bundler",
+    "allowImportingTsExtensions": true,
+    "verbatimModuleSyntax": true,
+    "noEmit": true,
+    // Paths
+    "baseUrl": ".",
+    "paths": {
+      "@/*": [
+        "./*"
+      ]
+    },
+    // Best practices
+    "strict": true,
+    "skipLibCheck": true,
+    "noFallthroughCasesInSwitch": true,
+    "noUncheckedIndexedAccess": true,
+    "noImplicitOverride": true,
+    // Some stricter flags (disabled by default)
+    "noUnusedLocals": false,
+    "noUnusedParameters": false,
+    "noPropertyAccessFromIndexSignature": false,
+    "incremental": true,
+    "plugins": [
+      {
+        "name": "next"
+      }
+    ]
+  },
+  "include": [
+    "next-env.d.ts",
+    ".next/types/**/*.ts",
+    "**/*.ts",
+    "**/*.tsx"
+  ],
+  "exclude": [
+    "node_modules"
+  ]
+}
+</file>
+
+<file path="app/layout.tsx">
+import type React from "react"
+import type { Metadata } from "next"
+import { Work_Sans, Open_Sans } from "next/font/google"
+import "./globals.css"
+import { ThemeProvider } from "@/components/theme-provider"
+
+const workSans = Work_Sans({
+  subsets: ["latin"],
+  display: "swap",
+  variable: "--font-work-sans",
+})
+
+const openSans = Open_Sans({
+  subsets: ["latin"],
+  display: "swap",
+  variable: "--font-open-sans",
+})
+
+export const metadata: Metadata = {
+  title: "Bitcrush",
+  description: "Bitcrush — Pixel art generator UI",
+  generator: "v0.app",
+}
+
+export default function RootLayout({
+  children,
+}: Readonly<{
+  children: React.ReactNode
+}>) {
+  return (
+    <html lang="en" className={`${workSans.variable} ${openSans.variable} antialiased`} suppressHydrationWarning>
+      <body className="font-sans" suppressHydrationWarning>
+        <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+          {children}
+        </ThemeProvider>
+      </body>
+    </html>
+  )
+}
+</file>
+
+<file path="README.md">
+![Bitcrush Logo](/public/bitcrush.png)
+
+# Bitcrush
+
+Turn images into crisp pixel art with selectable palettes and algorithms. This repo contains the Next.js UI only; the pixel engine will be migrated to Rust.
+
+## Development
+
+- Install deps: `bun install`
+- Dev server: `bunx next dev`
+- Build: `bunx next build`
+</file>
+
+<file path="app/page.tsx">
+"use client"
+
+import type React from "react"
+
+import { useEffect, useMemo, useState } from "react"
+import { Button } from "@/components/ui/button"
+import { Card, CardContent } from "@/components/ui/card"
+import Image from "next/image"
+import { ALGORITHMS } from "@/lib/algorithms"
+import { PALETTES } from "@/config/palettes"
+import { ImageUploader } from "@/app/(bitcrush)/_components/ImageUploader"
+import { PalettePicker } from "@/app/(bitcrush)/_components/PalettePicker"
+import { GridSizeSelector } from "@/app/(bitcrush)/_components/GridSizeSelector"
+import { AlgorithmSelector } from "@/app/(bitcrush)/_components/AlgorithmSelector"
+import { OutputPreview } from "@/app/(bitcrush)/_components/OutputPreview"
+import { DownloadButtons } from "@/app/(bitcrush)/_components/DownloadButtons"
+import { usePixelization } from "@/app/(bitcrush)/_hooks/usePixelization"
+
+export default function PixelizationTool() {
+  const [selectedImage, setSelectedImage] = useState<string | null>(null)
+  const [gridSize, setGridSize] = useState<number>(32)
+  const [selectedPalette, setSelectedPalette] = useState<string>("Flying Tiger")
+  const [algorithm, setAlgorithm] = useState<string>("Standard")
+  const { isProcessing, pixelizedImage, baseResolutionImage, processImage } = usePixelization()
+  const [mounted, setMounted] = useState(false)
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
+
+  const gridSizes = useMemo(
+    () => [
+      { value: 8, label: "8×8" },
+      { value: 16, label: "16×16" },
+      { value: 32, label: "32×32" },
+      { value: 64, label: "64×64" },
+      { value: 80, label: "80×80" },
+      { value: 96, label: "96×96" },
+      { value: 128, label: "128×128" },
+      { value: 192, label: "192×192" },
+      { value: 256, label: "256×256" },
+      { value: 288, label: "288×288" },
+      { value: 384, label: "384×384" },
+      { value: 512, label: "512×512" },
+    ],
+    [],
+  )
+
+  const palettes = PALETTES
+
+  const processCurrent = () => {
+    if (!selectedImage) return
+    if (palettes.length === 0) return
+    const found = palettes.find((p) => p.name === selectedPalette)
+    if (found) {
+      processImage(selectedImage, { gridSize, palette: found }, algorithm)
+      return
+    }
+    const first = palettes[0]
+    if (!first) return
+    processImage(selectedImage, { gridSize, palette: first }, algorithm)
+  }
+
+  return (
+    <div className="min-h-screen bg-background relative overflow-hidden">
+      <div className="absolute inset-0 opacity-[0.02] pointer-events-none">
+        <div className="absolute inset-0 bg-[linear-gradient(90deg,transparent_24px,rgba(255,255,255,0.05)_25px,rgba(255,255,255,0.05)_26px,transparent_27px),linear-gradient(rgba(255,255,255,0.05)_24px,transparent_25px,transparent_26px,rgba(255,255,255,0.05)_27px)] bg-[length:25px_25px] animate-pulse" />
+      </div>
+
+      {mounted && (
+        <div className="absolute inset-0 pointer-events-none overflow-hidden">
+          {Array.from({ length: 12 }).map((_, i) => {
+            const left = ((i * 73) % 100) + (i % 2 === 0 ? 0.5 : 0)
+            const top = ((i * 37) % 100) + (i % 3 === 0 ? 0.25 : 0)
+            const delay = ((i * 487) % 3000) / 1000
+            const duration = 3 + (((i * 911) % 2000) / 1000)
+            return (
+              <div
+                key={i}
+                className="absolute w-2 h-2 bg-foreground/10 rounded-sm animate-bounce"
+                style={{
+                  left: `${left}%`,
+                  top: `${top}%`,
+                  animationDelay: `${delay}s`,
+                  animationDuration: `${duration}s`,
+                }}
+              />
+            )
+          })}
+        </div>
+      )}
+
+      <header className="border-b border-border/50 bg-background/80 backdrop-blur-sm sticky top-0 z-50">
+        <div className="container mx-auto px-6 py-3 flex items-center">
+          <div className="relative h-6" style={{ width: "auto" }}>
+            <Image src="/bitcrush.png" alt="Bitcrush" width={96} height={24} priority unoptimized />
+          </div>
+        </div>
+      </header>
+
+      <main className="container mx-auto px-6 py-6 max-w-[2000px] relative z-10">
+        <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
+          <div className="xl:col-span-1 space-y-4">
+            <Card className="border-border/50">
+              <CardContent className="p-4">
+                <div className="flex items-center gap-2 mb-3">
+                  <h3 className="text-sm font-medium">Source Image</h3>
+                </div>
+                <ImageUploader value={selectedImage} onChange={setSelectedImage} />
+              </CardContent>
+            </Card>
+
+            <Card className="border-border/50">
+              <CardContent className="p-4">
+                <h3 className="text-sm font-medium mb-3">Color Palette</h3>
+                <PalettePicker palettes={palettes} value={selectedPalette} onChange={setSelectedPalette} />
+              </CardContent>
+            </Card>
+
+            <Card className="border-border/50">
+              <CardContent className="p-4">
+                <h3 className="text-sm font-medium mb-3">Grid Resolution</h3>
+                <GridSizeSelector options={gridSizes} value={gridSize} onChange={setGridSize} />
+              </CardContent>
+            </Card>
+
+            <Card className="border-border/50">
+              <CardContent className="p-4">
+                <h3 className="text-sm font-medium mb-3">Algorithm</h3>
+                <AlgorithmSelector algorithms={ALGORITHMS} value={algorithm} onChange={setAlgorithm} />
+              </CardContent>
+            </Card>
+          </div>
+
+          <div className="xl:col-span-1 space-y-4">
+            <Card className="border-border/50">
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="text-sm font-medium">Output</h3>
+                </div>
+                <OutputPreview image={pixelizedImage} />
+              </CardContent>
+            </Card>
+
+            <Button onClick={processCurrent} disabled={!selectedImage || isProcessing} className="w-full h-10" size="lg">
+              {isProcessing ? (
+                <>
+                  <div className="w-4 h-4 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin mr-2" />
+                  Processing...
+                </>
+              ) : (
+                "Generate Pixel Art"
+              )}
+            </Button>
+
+            {pixelizedImage && (
+              <Card className="border-border/50">
+                <CardContent className="p-4">
+                  <h3 className="text-sm font-medium mb-3">Download Options</h3>
+                  <DownloadButtons
+                    pixelizedImage={pixelizedImage}
+                    baseResolutionImage={baseResolutionImage}
+                    algorithm={algorithm}
+                    gridSize={gridSize}
+                    paletteName={selectedPalette}
+                  />
+                </CardContent>
+              </Card>
+            )}
+          </div>
+        </div>
+      </main>
+    </div>
+  )
+}
+</file>
+
+<file path="package.json">
+{
+  "name": "my-v0-project",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "build": "bunx --bun next build",
+    "dev": "bunx --bun next dev",
+    "lint": "bunx --bun next lint",
+    "start": "bunx --bun next start"
+  },
+  "dependencies": {
+    "@radix-ui/react-slot": "^1.2.3",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "lucide-react": "^0.539.0",
+    "next": "15.4.6",
+    "next-themes": "^0.4.6",
+    "react": "^19.1.1",
+    "react-dom": "^19.1.1",
+    "tailwind-merge": "^3.3.1"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4.1.12",
+    "@types/bun": "^1.2.20",
+    "@types/node": "^24.3.0",
+    "@types/react": "^19.1.10",
+    "@types/react-dom": "^19.1.7",
+    "eslint": "^9.33.0",
+    "eslint-config-next": "15.4.6",
+    "postcss": "^8.5.6",
+    "tailwindcss": "^4.1.12",
+    "tw-animate-css": "1.3.7",
+    "typescript": "^5.9.2"
+  }
+}
+</file>
+
+</files>
