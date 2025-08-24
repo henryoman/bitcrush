@@ -1,9 +1,10 @@
 use crate::types::RenderRequest;
-use image::{imageops::FilterType, DynamicImage, ImageBuffer, ImageOutputFormat, Rgba, RgbaImage};
+use image::{imageops::FilterType, DynamicImage, ImageBuffer, ImageFormat, Rgba, RgbaImage};
 use std::io::Cursor;
 use thiserror::Error;
 
-use super::algorithms::{get_algorithm_by_name, Algorithm};
+use super::algorithms::get_algorithm_by_name;
+use super::palettes::{built_in_palettes, get_palette_by_name};
 
 #[derive(Debug, Error)]
 pub enum EngineError {
@@ -21,7 +22,9 @@ fn decode_data_url_to_image(data_url: &str) -> Result<DynamicImage, EngineError>
     if !header.contains("base64") {
         return Err(EngineError::UnsupportedDataUrl);
     }
-    let bytes = base64::decode(b64).map_err(|_| EngineError::UnsupportedDataUrl)?;
+    use base64::engine::general_purpose::STANDARD as B64;
+    use base64::Engine;
+    let bytes = B64.decode(b64).map_err(|_| EngineError::UnsupportedDataUrl)?;
     let img = image::load_from_memory(&bytes)?;
     Ok(img)
 }
@@ -46,8 +49,10 @@ fn upscale_center_to(img: &RgbaImage, display_size: u32) -> RgbaImage {
 
 fn encode_png_base64(img: &RgbaImage) -> Result<String, EngineError> {
     let mut buf = Cursor::new(Vec::new());
-    DynamicImage::ImageRgba8(img.clone()).write_to(&mut buf, ImageOutputFormat::Png)?;
-    let b64 = base64::encode(buf.into_inner());
+    DynamicImage::ImageRgba8(img.clone()).write_to(&mut buf, ImageFormat::Png)?;
+    use base64::engine::general_purpose::STANDARD as B64;
+    use base64::Engine;
+    let b64 = B64.encode(buf.into_inner());
     Ok(format!("data:image/png;base64,{}", b64))
 }
 
@@ -55,7 +60,10 @@ pub fn render_preview_png(req: RenderRequest) -> Result<String, EngineError> {
     let img = decode_data_url_to_image(&req.image_data_url)?;
     let mut grid = resize_to_grid(&img, req.grid_size);
     let algo = get_algorithm_by_name(req.algorithm.as_str());
-    algo.process(&mut grid);
+    let palette_name = req.palette_name.as_deref().unwrap_or("Flying Tiger");
+    let palette = get_palette_by_name(palette_name);
+    let pal_slice: Vec<[u8;3]> = palette.colors.clone();
+    algo.process(&mut grid, &pal_slice);
     let up = upscale_center_to(&grid, 640);
     encode_png_base64(&up)
 }
@@ -64,7 +72,10 @@ pub fn render_base_png(req: RenderRequest) -> Result<String, EngineError> {
     let img = decode_data_url_to_image(&req.image_data_url)?;
     let mut grid = resize_to_grid(&img, req.grid_size);
     let algo = get_algorithm_by_name(req.algorithm.as_str());
-    algo.process(&mut grid);
+    let palette_name = req.palette_name.as_deref().unwrap_or("Flying Tiger");
+    let palette = get_palette_by_name(palette_name);
+    let pal_slice: Vec<[u8;3]> = palette.colors.clone();
+    algo.process(&mut grid, &pal_slice);
     encode_png_base64(&grid)
 }
 

@@ -8,7 +8,7 @@ impl Algorithm for Standard {
         "Standard"
     }
 
-    fn process(&self, _img: &mut RgbaImage) {
+    fn process(&self, _img: &mut RgbaImage, _palette: &[[u8;3]]) {
         // No-op for now; placeholder for parity with TS "Standard"
     }
 }

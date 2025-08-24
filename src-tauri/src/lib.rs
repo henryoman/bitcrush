@@ -2,6 +2,7 @@ mod engine;
 mod types;
 
 use engine::pipeline::{render_base_png, render_preview_png};
+use engine::palettes::built_in_palettes;
 use types::RenderRequest;
 
 // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
@@ -16,16 +17,11 @@ fn render_base(req: RenderRequest) -> Result<String, String> {
 }
 
 #[tauri::command]
-fn list_palettes() -> Vec<&'static str> {
-    // Placeholder: palettes will be loaded from resources in a later step
-    vec![
-        "Flying Tiger",
-        "Black & White",
-        "Cozy 8",
-        "Retro Gaming",
-        "Sunset Vibes",
-        "Forest Dreams",
-    ]
+fn list_palettes() -> Vec<(String, Vec<[u8;3]>)> {
+    built_in_palettes()
+        .into_iter()
+        .map(|p| (p.name.to_string(), p.colors))
+        .collect()
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]

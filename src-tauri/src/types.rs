@@ -8,6 +8,8 @@ pub struct RenderRequest {
     pub grid_size: u32,
     /// Algorithm name (e.g. "Standard", "Floyd–Steinberg", etc.)
     pub algorithm: String,
+    /// Palette name to use (matches built-ins for now)
+    pub palette_name: Option<String>,
 }
 
 
