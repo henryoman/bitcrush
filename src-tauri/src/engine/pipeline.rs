@@ -1,4 +1,4 @@
-use crate::types::{AlgorithmName, RenderRequest};
+use crate::types::RenderRequest;
 use image::{imageops::FilterType, DynamicImage, ImageBuffer, ImageOutputFormat, Rgba, RgbaImage};
 use std::io::Cursor;
 use thiserror::Error;
@@ -54,10 +54,7 @@ fn encode_png_base64(img: &RgbaImage) -> Result<String, EngineError> {
 pub fn render_preview_png(req: RenderRequest) -> Result<String, EngineError> {
     let img = decode_data_url_to_image(&req.image_data_url)?;
     let mut grid = resize_to_grid(&img, req.grid_size);
-    let algo = match req.algorithm {
-        AlgorithmName::Standard => get_algorithm_by_name("Standard"),
-        AlgorithmName::Other => get_algorithm_by_name("Standard"),
-    };
+    let algo = get_algorithm_by_name(req.algorithm.as_str());
     algo.process(&mut grid);
     let up = upscale_center_to(&grid, 640);
     encode_png_base64(&up)
@@ -66,10 +63,7 @@ pub fn render_preview_png(req: RenderRequest) -> Result<String, EngineError> {
 pub fn render_base_png(req: RenderRequest) -> Result<String, EngineError> {
     let img = decode_data_url_to_image(&req.image_data_url)?;
     let mut grid = resize_to_grid(&img, req.grid_size);
-    let algo = match req.algorithm {
-        AlgorithmName::Standard => get_algorithm_by_name("Standard"),
-        AlgorithmName::Other => get_algorithm_by_name("Standard"),
-    };
+    let algo = get_algorithm_by_name(req.algorithm.as_str());
     algo.process(&mut grid);
     encode_png_base64(&grid)
 }

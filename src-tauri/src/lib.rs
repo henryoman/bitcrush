@@ -2,7 +2,7 @@ mod engine;
 mod types;
 
 use engine::pipeline::{render_base_png, render_preview_png};
-use types::{AlgorithmName, RenderRequest};
+use types::RenderRequest;
 
 // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
 #[tauri::command]
