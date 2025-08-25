@@ -1,0 +1,8 @@
+GIMP Palette
+#Palette Name: Old Mug
+#Description: "Old mug" 2-bit palette. Kind of a yellow/brown to blue/navy, giving kind of a soft relaxing antique mood - reminiscent of a ceramic mug with "blue rutile" glaze. Disclaimer that I started with inspiration from the excellent&nbsp;<a href="https://lospec.com/palette-list/ancient-scroll" target="_blank" class="">"Ancient Scroll" palette by Dr_Succubus</a>. But I modified it a bunch to work for my text adventure game <a href="https://eldritchrenaissancecake.itch.io/" target="_blank">"The Prairie House"</a> - mainly since I needed a darker navy and for the colours to separate more clearly (especially for pixel text).<br>
+#Colors: 4
+243	238	206	f3eece
+192	175	144	c0af90
+63	89	86	3f5956
+37	43	58	252b3a

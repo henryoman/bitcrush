@@ -1,0 +1,9 @@
+GIMP Palette
+#Palette Name: CMYK Printer
+#Description: A pallete based on the CMYK (cyan, magenta, yellow, key) color set used by printers.
+#Colors: 5
+0	221	255	00ddff
+229	0	255	e500ff
+255	242	0	fff200
+255	255	255	ffffff
+0	0	0	000000
