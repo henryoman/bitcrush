@@ -173,3 +173,15 @@ select, input, button {
 .form-control { width: 100%; }
 .actions { display: flex; gap: 8px; flex-wrap: wrap; }
 .preview-panel { height: 560px; display: flex; align-items: center; justify-content: center; }
+
+/* Buttons: hover/active/disabled feedback */
+.btn { position: relative; transition: background-color 120ms ease, color 120ms ease, box-shadow 120ms ease, transform 60ms ease; }
+.btn:hover:not(:disabled) { box-shadow: 0 0 0 1px var(--border-color) inset; }
+.btn:active:not(:disabled), .btn.is-pressed { transform: translateY(1px); }
+.btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* Primary button subtle hover */
+.btn-primary:hover:not(:disabled) { filter: brightness(1.05); }
+
+/* Accessible focus ring without rounding */
+.btn:focus-visible { outline: 2px solid var(--primary-color); outline-offset: 2px; }

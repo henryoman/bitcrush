@@ -134,10 +134,16 @@ window.addEventListener("DOMContentLoaded", async () => {
     }
   });
 
-  btnUpscaled?.addEventListener("click", () => {
+  btnUpscaled?.addEventListener("click", (e) => {
+    const el = e.currentTarget as HTMLButtonElement;
+    el.classList.add("is-pressed");
+    setTimeout(() => el.classList.remove("is-pressed"), 90);
     if (upscaledDataURL) downloadDataURL(upscaledDataURL, "bitcrush-upscaled.png");
   });
-  btnBase?.addEventListener("click", () => {
+  btnBase?.addEventListener("click", (e) => {
+    const el = e.currentTarget as HTMLButtonElement;
+    el.classList.add("is-pressed");
+    setTimeout(() => el.classList.remove("is-pressed"), 90);
     if (baseDataURL) downloadDataURL(baseDataURL, "bitcrush-base.png");
   });
 });
