@@ -1,1 +1,1 @@
-we are workign in a big monorepo with rust and typescript.
+we are workign in a big monorepo with rust and typescript. It is an image manipulation desktop app made with tauri and vite/bun/html on the front end. we always use latest versions and best practices.

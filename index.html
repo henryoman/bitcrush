@@ -2,7 +2,6 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="stylesheet" href="https://unpkg.com/terminal.css@0.7.5/dist/terminal.min.css" />
     <link rel="stylesheet" href="/src/styles.css" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>bitcrush</title>
@@ -47,7 +46,21 @@
               <option>Dual Color Dithering</option>
               <option>Edge Dithering</option>
               <option>Randomized Selective</option>
+              <option>Stucki</option>
+              <option>Atkinson</option>
             </select>
+          </div>
+
+          <div class="card padded">
+            <label>Tone</label>
+            <input id="tone" type="range" min="0.4" max="2.2" step="0.05" value="1.0" class="form-control" />
+            <div class="text-secondary" id="toneLabel">Gamma: 1.00</div>
+          </div>
+
+          <div class="card padded">
+            <label>Denoise</label>
+            <input id="denoise" type="range" min="0" max="3" step="0.1" value="0" class="form-control" />
+            <div class="text-secondary" id="denoiseLabel">Sigma: 0.0</div>
           </div>
 
           <div class="card padded">
@@ -59,6 +72,7 @@
               <option value="64">64×64</option>
               <option value="128">128×128</option>
               <option value="256">256×256</option>
+              <option value="384">384×384</option>
             </select>
           </div>
         </div>

@@ -1,10 +1,29 @@
-@import "terminal.css";
+@import "tailwindcss";
+
+@theme {
+  /* Colors */
+  --color-background: #090909;
+  --color-surface: #0f1114;
+  --color-border: #1a1c21;
+  --color-primary: #0f439d; /* glow-bitcrush */
+  --color-secondary: #9aa0a6;
+  --color-error: #d2463e;
+  --color-font: #cecece;
+  --color-invert-font: #252424;
+
+  /* Typography */
+  --font-sans: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+  --font-mono: SFMono-Regular, Menlo, Monaco, "Lucida Console", "Liberation Mono", "DejaVu Sans Mono", "Bitstream Vera Sans Mono", "Courier New", monospace;
+
+  /* Sizing */
+  --space-1: 10px; /* global space */
+}
 
 /* All colors centralized in :root; avoid magic values below */
 
 html, body {
   margin: 0;
-  background: var(--background-color);
+  background: var(--color-background);
   height: 100%;
   overflow: auto; /* allow wheel/trackpad scroll without visible bars */
   -ms-overflow-style: none; /* IE/Edge */
@@ -48,7 +67,7 @@ h1 {
   text-align: center;
 }
 
-/* Terminal CSS styles will handle control look; we only keep sharp corners */
+/* Keep sharp corners */
 button,
 input,
 select,
@@ -58,38 +77,25 @@ textarea {
 
 /* (removed obsolete greet styles) */
 
-/* Terminal CSS dark theme variables and overrides */
+/* Derived CSS variables for custom styles */
 :root {
   --global-font-size: 12px; /* smaller base */
   --global-line-height: 1.2em;
   --global-space: 10px;
 
-  --font-stack: "SFMono-Regular", "Menlo", "Monaco", "Lucida Console", "Liberation Mono", "DejaVu Sans Mono", "Bitstream Vera Sans Mono", "Courier New", monospace;
-  --mono-font-stack: "SFMono-Regular", "Menlo", "Monaco", "Lucida Console", "Liberation Mono", "DejaVu Sans Mono", "Bitstream Vera Sans Mono", "Courier New", monospace;
+  --link-color: var(--color-primary);
+  --link-hover-color: var(--color-primary);
 
-  --background-color: #090909; /* darker */
-  --font-color: #cecece;
-  --invert-font-color: #252424;
-  /* Primary uses brand glow color */
-  --primary-color: var(--glow-bitcrush);
-  --secondary-color: #9aa0a6;
-  --error-color: #d2463e;
-
-  /* Consolidated surface and border tokens */
-  --surface-color: #0f1114;
-  --border-color: #1a1c21;
-
-  --code-bg-color: #111318;
-  --block-background-color: #111111;
-  /* Brand/link/glow tokens */
-  --link-color: var(--primary-color);
-  --link-hover-color: var(--primary-color);
-  --glow-bitcrush: #0f439d;
+  --button-bg: var(--color-surface);
+  --button-fg: #f0f0f0;
+  --button-border: var(--color-border);
+  --button-primary-bg: var(--color-primary);
+  --button-primary-fg: #ffffff;
 }
 
 body.terminal {
-  background-color: var(--background-color);
-  color: var(--font-color);
+  background-color: var(--color-background);
+  color: var(--color-font);
 }
 
 /* Header */
@@ -134,12 +140,10 @@ body.terminal {
   text-decoration: underline;
 }
 
-/* Ensure Terminal buttons stay sharp */
+/* Ensure sharp corners */
 .btn,
 .btn-primary,
-button {
-  border-radius: 0;
-}
+button { border-radius: 0; }
 
 /* Gentle retro-ish typography scale and safe wrapping */
 body, .container, .card, .form-control, label, select, button, input, textarea {
@@ -156,26 +160,30 @@ select, input, button {
   font-size: 0.85rem;
 }
 
-.text-secondary {
-  color: var(--secondary-color);
-}
+.text-secondary { color: var(--color-secondary); }
 
 /* Simple two-column structure for wider screens */
 .page { max-width: 2000px; margin: 0 auto; }
 .layout { display: grid; grid-template-columns: 1fr; gap: 12px; padding: 12px; }
-@media (min-width: 960px) { .layout { grid-template-columns: 1fr 1fr; align-items: start; } }
+@media (min-width: 960px) { .layout { grid-template-columns: 420px 1fr; align-items: start; } }
 .controls .card { margin-bottom: 12px; }
 .preview .card { margin-bottom: 12px; }
 
 /* Cards and panels */
-.card { background: var(--surface-color); border: 1px solid var(--border-color); }
-.padded { padding: 12px; }
-.form-control { width: 100%; }
-.actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.card { @apply bg-[var(--color-surface)] border border-[var(--color-border)]; }
+.padded { @apply p-3; }
+.form-control { @apply w-full; }
+.actions { @apply flex gap-2 flex-wrap; }
+/* Place actions as a full-width row at the end of the grid flow */
+.layout > .actions { grid-column: 1 / -1; margin-top: 8px; }
 .preview-panel { height: 560px; display: flex; align-items: center; justify-content: center; }
 
-/* Buttons: hover/active/disabled feedback */
-.btn { position: relative; transition: background-color 120ms ease, color 120ms ease, box-shadow 120ms ease, transform 60ms ease; }
+.btn { @apply relative inline-flex items-center justify-center select-none border px-[14px] py-[10px] font-semibold text-[0.95rem] leading-none min-h-[36px];
+  transition: background-color 120ms ease, color 120ms ease, box-shadow 120ms ease, transform 60ms ease;
+  background-color: var(--button-bg);
+  color: var(--button-fg);
+  border-color: var(--button-border);
+}
 .btn:hover:not(:disabled) { box-shadow: 0 0 0 1px var(--border-color) inset; }
 .btn:active:not(:disabled), .btn.is-pressed { transform: translateY(1px); }
 .btn:disabled { opacity: 0.5; cursor: not-allowed; }
@@ -184,4 +192,16 @@ select, input, button {
 .btn-primary:hover:not(:disabled) { filter: brightness(1.05); }
 
 /* Accessible focus ring without rounding */
-.btn:focus-visible { outline: 2px solid var(--primary-color); outline-offset: 2px; }
+.btn:focus-visible { outline: 2px solid var(--color-primary); outline-offset: 2px; }
+
+/* High-contrast, solid buttons */
+.actions .btn,
+.btn { letter-spacing: 0.02em; }
+
+.btn:hover:not(:disabled) { background-color: color-mix(in srgb, var(--button-bg) 92%, white 8%); }
+
+.btn-primary { @apply border-transparent; background-color: var(--button-primary-bg); color: var(--button-primary-fg); text-shadow: 0 1px 0 rgba(0,0,0,0.4); }
+
+.btn-primary:hover:not(:disabled) { filter: none; background-color: color-mix(in srgb, var(--button-primary-bg) 88%, white 12%); }
+
+.btn:disabled { background-color: color-mix(in srgb, var(--button-bg) 85%, black 15%); color: color-mix(in srgb, var(--button-fg) 60%, gray 40%); }

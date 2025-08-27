@@ -5,4 +5,6 @@ pub mod ordered_selective;
 pub mod edge;
 pub mod dual_color;
 pub mod randomized_selective;
+pub mod stucki;
+pub mod atkinson;
 

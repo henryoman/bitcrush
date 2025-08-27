@@ -13,6 +13,8 @@ use super::dither::{
     dual_color::apply_dual_color,
     edge::apply_edge_dithering,
     randomized_selective::apply_randomized_selective,
+    stucki::apply_stucki,
+    atkinson::apply_atkinson,
 };
 use super::palettes::get_palette_by_name;
 
@@ -43,6 +45,30 @@ fn resize_to_grid(img: &DynamicImage, grid_size: u32) -> RgbaImage {
     img.resize_exact(grid_size, grid_size, FilterType::Nearest).to_rgba8()
 }
 
+fn apply_preprocess(img: DynamicImage, denoise_sigma: Option<f32>) -> DynamicImage {
+    if let Some(sigma) = denoise_sigma {
+        if sigma > 0.01 {
+            return image::DynamicImage::ImageRgba8(image::imageops::blur(&img.to_rgba8(), sigma));
+        }
+    }
+    img
+}
+
+fn apply_tone_gamma(img: &mut RgbaImage, tone_gamma: Option<f32>) {
+    if let Some(g) = tone_gamma {
+        if (g - 1.0).abs() > 0.001 {
+            let inv = 1.0 / g.max(0.05);
+            for p in img.pixels_mut() {
+                let [r,gc,b,a] = p.0;
+                let cr = ((r as f32 / 255.0).powf(inv) * 255.0).clamp(0.0,255.0) as u8;
+                let cg = ((gc as f32 / 255.0).powf(inv) * 255.0).clamp(0.0,255.0) as u8;
+                let cb = ((b as f32 / 255.0).powf(inv) * 255.0).clamp(0.0,255.0) as u8;
+                *p = Rgba([cr,cg,cb,a]);
+            }
+        }
+    }
+}
+
 fn upscale_center_to(img: &RgbaImage, display_size: u32) -> RgbaImage {
     // force integer scale factor to avoid blurry pixels
     let factor = (display_size / img.width()).max(1);
@@ -69,7 +95,9 @@ fn encode_png_base64(img: &RgbaImage) -> Result<String, EngineError> {
 
 pub fn render_preview_png(req: RenderRequest) -> Result<String, EngineError> {
     let img = decode_data_url_to_image(&req.image_data_url)?;
-    let mut grid = resize_to_grid(&img, req.grid_size);
+    let pre = apply_preprocess(img, req.denoise_sigma);
+    let mut grid = resize_to_grid(&pre, req.grid_size);
+    apply_tone_gamma(&mut grid, req.tone_gamma);
     let algo = get_algorithm_by_name(req.algorithm.as_str());
     let palette_name = req.palette_name.as_deref().unwrap_or("Flying Tiger");
     let palette = get_palette_by_name(palette_name);
@@ -82,6 +110,8 @@ pub fn render_preview_png(req: RenderRequest) -> Result<String, EngineError> {
         "Dual Color Dithering" => apply_dual_color(&mut grid, &pal_slice),
         "Edge Dithering" => apply_edge_dithering(&mut grid, &pal_slice),
         "Randomized Selective" => apply_randomized_selective(&mut grid, &pal_slice, 30.0),
+        "Stucki" => apply_stucki(&mut grid, &pal_slice),
+        "Atkinson" => apply_atkinson(&mut grid, &pal_slice),
         _ => algo.process(&mut grid, &pal_slice),
     }
     let target = req.display_size.unwrap_or(640);
@@ -93,7 +123,9 @@ pub fn render_preview_png(req: RenderRequest) -> Result<String, EngineError> {
 
 pub fn render_base_png(req: RenderRequest) -> Result<String, EngineError> {
     let img = decode_data_url_to_image(&req.image_data_url)?;
-    let mut grid = resize_to_grid(&img, req.grid_size);
+    let pre = apply_preprocess(img, req.denoise_sigma);
+    let mut grid = resize_to_grid(&pre, req.grid_size);
+    apply_tone_gamma(&mut grid, req.tone_gamma);
     let algo = get_algorithm_by_name(req.algorithm.as_str());
     let palette_name = req.palette_name.as_deref().unwrap_or("Flying Tiger");
     let palette = get_palette_by_name(palette_name);
@@ -106,6 +138,8 @@ pub fn render_base_png(req: RenderRequest) -> Result<String, EngineError> {
         "Dual Color Dithering" => apply_dual_color(&mut grid, &pal_slice),
         "Edge Dithering" => apply_edge_dithering(&mut grid, &pal_slice),
         "Randomized Selective" => apply_randomized_selective(&mut grid, &pal_slice, 30.0),
+        "Stucki" => apply_stucki(&mut grid, &pal_slice),
+        "Atkinson" => apply_atkinson(&mut grid, &pal_slice),
         _ => algo.process(&mut grid, &pal_slice),
     }
     encode_png_base64(&grid)
@@ -114,7 +148,9 @@ pub fn render_base_png(req: RenderRequest) -> Result<String, EngineError> {
 // Versions that accept explicit palette colors (e.g., from GPL) to avoid relying on built-ins
 pub fn render_preview_png_with_palette(req: RenderRequest, palette_colors: Vec<[u8;3]>) -> Result<String, EngineError> {
     let img = decode_data_url_to_image(&req.image_data_url)?;
-    let mut grid = resize_to_grid(&img, req.grid_size);
+    let pre = apply_preprocess(img, req.denoise_sigma);
+    let mut grid = resize_to_grid(&pre, req.grid_size);
+    apply_tone_gamma(&mut grid, req.tone_gamma);
     let algo = get_algorithm_by_name(req.algorithm.as_str());
     let pal_slice: Vec<[u8;3]> = palette_colors;
     match req.algorithm.as_str() {
@@ -125,6 +161,8 @@ pub fn render_preview_png_with_palette(req: RenderRequest, palette_colors: Vec<[
         "Dual Color Dithering" => apply_dual_color(&mut grid, &pal_slice),
         "Edge Dithering" => apply_edge_dithering(&mut grid, &pal_slice),
         "Randomized Selective" => apply_randomized_selective(&mut grid, &pal_slice, 30.0),
+        "Stucki" => apply_stucki(&mut grid, &pal_slice),
+        "Atkinson" => apply_atkinson(&mut grid, &pal_slice),
         _ => algo.process(&mut grid, &pal_slice),
     }
     let target = req.display_size.unwrap_or(640);
@@ -135,7 +173,9 @@ pub fn render_preview_png_with_palette(req: RenderRequest, palette_colors: Vec<[
 
 pub fn render_base_png_with_palette(req: RenderRequest, palette_colors: Vec<[u8;3]>) -> Result<String, EngineError> {
     let img = decode_data_url_to_image(&req.image_data_url)?;
-    let mut grid = resize_to_grid(&img, req.grid_size);
+    let pre = apply_preprocess(img, req.denoise_sigma);
+    let mut grid = resize_to_grid(&pre, req.grid_size);
+    apply_tone_gamma(&mut grid, req.tone_gamma);
     let algo = get_algorithm_by_name(req.algorithm.as_str());
     let pal_slice: Vec<[u8;3]> = palette_colors;
     match req.algorithm.as_str() {
@@ -146,6 +186,8 @@ pub fn render_base_png_with_palette(req: RenderRequest, palette_colors: Vec<[u8;
         "Dual Color Dithering" => apply_dual_color(&mut grid, &pal_slice),
         "Edge Dithering" => apply_edge_dithering(&mut grid, &pal_slice),
         "Randomized Selective" => apply_randomized_selective(&mut grid, &pal_slice, 30.0),
+        "Stucki" => apply_stucki(&mut grid, &pal_slice),
+        "Atkinson" => apply_atkinson(&mut grid, &pal_slice),
         _ => algo.process(&mut grid, &pal_slice),
     }
     encode_png_base64(&grid)

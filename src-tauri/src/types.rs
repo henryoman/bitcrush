@@ -12,6 +12,12 @@ pub struct RenderRequest {
     pub palette_name: Option<String>,
     /// Desired preview size; upscaled image width/height (nearest multiple of grid)
     pub display_size: Option<u32>,
+    /// Optional tone curve gamma (1.0 = no change). Typical 0.5..2.0
+    #[serde(default)]
+    pub tone_gamma: Option<f32>,
+    /// Optional denoise sigma for Gaussian blur in source domain. Typical 0.0..2.5
+    #[serde(default)]
+    pub denoise_sigma: Option<f32>,
 }
 
 

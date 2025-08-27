@@ -1,6 +1,6 @@
 use image::Rgba;
 
-use crate::engine::color::{lab_distance, rgb_to_lab};
+use crate::engine::color::{ciede2000, rgb_to_lab};
 
 use super::{Algorithm, RgbaImage};
 
@@ -13,7 +13,7 @@ fn find_closest_palette_color(r: u8, g: u8, b: u8, palette: &[[u8;3]]) -> [u8;3]
     let mut best = palette[0];
     let mut best_d = f32::INFINITY;
     for [pr,pg,pb] in palette.iter().copied() {
-        let d = lab_distance(lab, rgb_to_lab(pr,pg,pb));
+        let d = ciede2000(lab, rgb_to_lab(pr,pg,pb));
         if d < best_d { best_d = d; best = [pr,pg,pb]; }
     }
     best
@@ -26,7 +26,13 @@ impl Algorithm for FloydSteinberg {
         let h = img.height() as i32;
         let mut buf = img.clone();
         for y in 0..h {
-            for x in 0..w {
+            let left_to_right = (y % 2) == 0; // serpentine
+            let xr: Box<dyn Iterator<Item=i32>> = if left_to_right {
+                Box::new(0..w)
+            } else {
+                Box::new((0..w).rev())
+            };
+            for x in xr {
                 let p = buf.get_pixel(x as u32, y as u32).0;
                 let (r,g,b,a) = (p[0], p[1], p[2], p[3]);
                 let chosen = find_closest_palette_color(r,g,b,palette);
@@ -50,10 +56,17 @@ impl Algorithm for FloydSteinberg {
                     }
                 };
 
-                distribute(x+1, y    , 7, 16, &mut buf);
-                distribute(x-1, y+1  , 3, 16, &mut buf);
-                distribute(x  , y+1  , 5, 16, &mut buf);
-                distribute(x+1, y+1  , 1, 16, &mut buf);
+                if left_to_right {
+                    distribute(x+1, y    , 7, 16, &mut buf);
+                    distribute(x-1, y+1  , 3, 16, &mut buf);
+                    distribute(x  , y+1  , 5, 16, &mut buf);
+                    distribute(x+1, y+1  , 1, 16, &mut buf);
+                } else {
+                    distribute(x-1, y    , 7, 16, &mut buf);
+                    distribute(x+1, y+1  , 3, 16, &mut buf);
+                    distribute(x  , y+1  , 5, 16, &mut buf);
+                    distribute(x-1, y+1  , 1, 16, &mut buf);
+                }
             }
         }
     }

@@ -1,6 +1,6 @@
 use image::Rgba;
 
-use crate::engine::color::{lab_distance_enhanced, rgb_to_lab};
+use crate::engine::color::{ciede2000, rgb_to_lab};
 
 use super::{Algorithm, RgbaImage};
 
@@ -21,7 +21,7 @@ impl Algorithm for Enhanced {
             let mut best = 0usize;
             let mut best_d = f32::INFINITY;
             for (i, pl) in pal_lab.iter().enumerate() {
-                let d = lab_distance_enhanced(lab, *pl);
+                let d = ciede2000(lab, *pl);
                 if d < best_d { best_d = d; best = i; }
             }
             let c = palette[best];

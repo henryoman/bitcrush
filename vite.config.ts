@@ -28,18 +28,10 @@ export default defineConfig(async () => ({
     },
   },
   css: {
-    transformer: "lightningcss",
-    lightningcss: {
-      // Desktop-only WebViews used by Tauri (modern engines)
-      browsers: "safari >= 14, ios_saf >= 14, chrome >= 114, edge >= 114, firefox >= 102",
-      drafts: {
-        nesting: true,
-        customMedia: true,
-      },
-    },
+    postcss: {},
   },
   build: {
-    cssMinify: "lightningcss",
+    cssMinify: true,
     target: "esnext",
   },
 }));

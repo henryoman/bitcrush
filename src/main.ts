@@ -42,6 +42,10 @@ window.addEventListener("DOMContentLoaded", async () => {
   const paletteSel = qs<HTMLSelectElement>("#palette");
   const algoSel = qs<HTMLSelectElement>("#algorithm");
   const gridSel = qs<HTMLSelectElement>("#grid");
+  const tone = qs<HTMLInputElement>("#tone");
+  const toneLabel = qs<HTMLDivElement>("#toneLabel");
+  const denoise = qs<HTMLInputElement>("#denoise");
+  const denoiseLabel = qs<HTMLDivElement>("#denoiseLabel");
   const btnGen = qs<HTMLButtonElement>("#generate");
   const btnUpscaled = qs<HTMLButtonElement>("#download-upscaled");
   const btnBase = qs<HTMLButtonElement>("#download-base");
@@ -71,6 +75,17 @@ window.addEventListener("DOMContentLoaded", async () => {
     enable(btnUpscaled, !!upscaledDataURL);
     enable(btnBase, !!baseDataURL);
   }
+
+  function updateToneLabel() {
+    if (tone && toneLabel) toneLabel.textContent = `Gamma: ${Number(tone.value).toFixed(2)}`;
+  }
+  function updateDenoiseLabel() {
+    if (denoise && denoiseLabel) denoiseLabel.textContent = `Sigma: ${Number(denoise.value).toFixed(1)}`;
+  }
+  updateToneLabel();
+  updateDenoiseLabel();
+  tone?.addEventListener("input", updateToneLabel);
+  denoise?.addEventListener("input", updateDenoiseLabel);
 
   function handleFile(file: File) {
     const reader = new FileReader();
@@ -120,6 +135,8 @@ window.addEventListener("DOMContentLoaded", async () => {
         algorithm: algoSel.value,
         palette_name: paletteSel.value,
         display_size: displaySize,
+        tone_gamma: tone ? Number(tone.value) : undefined,
+        denoise_sigma: denoise ? Number(denoise.value) : undefined,
       };
       const up = (await invoke("render_preview", { req })) as string;
       const base = (await invoke("render_base", { req })) as string;

@@ -1,7 +1,7 @@
 use image::Rgba;
 
 use crate::engine::algorithms::{Algorithm, RgbaImage};
-use crate::engine::color::{lab_distance, rgb_to_lab};
+use crate::engine::color::{ciede2000, rgb_to_lab};
 
 #[derive(Debug, Clone, Copy)]
 pub struct FloydSteinberg;
@@ -12,7 +12,7 @@ fn find_closest_palette_color(r: u8, g: u8, b: u8, palette: &[[u8;3]]) -> [u8;3]
     let mut best = palette[0];
     let mut best_d = f32::INFINITY;
     for [pr,pg,pb] in palette.iter().copied() {
-        let d = lab_distance(lab, rgb_to_lab(pr,pg,pb));
+        let d = ciede2000(lab, rgb_to_lab(pr,pg,pb));
         if d < best_d { best_d = d; best = [pr,pg,pb]; }
     }
     best
