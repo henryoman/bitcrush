@@ -1,4 +1,5 @@
 import { defineConfig } from "vite";
+import tailwind from "@tailwindcss/postcss";
 
 // @ts-expect-error process is a nodejs global
 const host = process.env.TAURI_DEV_HOST;
@@ -28,7 +29,9 @@ export default defineConfig(async () => ({
     },
   },
   css: {
-    postcss: {},
+    postcss: {
+      plugins: [tailwind()],
+    },
   },
   build: {
     cssMinify: true,
