@@ -7,6 +7,9 @@ pub struct RenderRequest {
     /// Grid width and height (e.g. 32x32, 384x192)
     pub grid_width: u32,
     pub grid_height: u32,
+    /// Optional grid string like "32" or "384x192". If present, Rust parses it.
+    #[serde(default)]
+    pub grid_value: Option<String>,
     /// Algorithm name (e.g. "Standard", "Floyd–Steinberg", etc.)
     pub algorithm: String,
     /// Palette name to use (matches built-ins for now)

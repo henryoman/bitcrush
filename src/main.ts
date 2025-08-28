@@ -54,7 +54,7 @@ window.addEventListener("DOMContentLoaded", async () => {
   let upscaledDataURL: string | null = null;
   let baseDataURL: string | null = null;
   let renderCounter = 0; // sequence for stale response protection
-  let debounceTimer: number | undefined;
+  // no live rendering; only render when Pixelate is pressed
 
   await loadPalettes();
 
@@ -79,11 +79,19 @@ window.addEventListener("DOMContentLoaded", async () => {
     outputEmpty.textContent = `Error: ${message}`;
   }
 
+  function markDirty() {
+    upscaledDataURL = null;
+    baseDataURL = null;
+    if (outputEmpty) outputEmpty.textContent = "Press Pixelate to update preview";
+    setPreview(null);
+    updateButtons();
+  }
+
   function updateButtons() {
     // Allow Pixelate click to prompt for file when no image
     enable(btnGen, true);
     enable(btnUpscaled, !!upscaledDataURL);
-    enable(btnBase, !!baseDataURL);
+    enable(btnBase, !!selectedImage);
   }
 
   function updateToneLabel() {
@@ -102,27 +110,21 @@ window.addEventListener("DOMContentLoaded", async () => {
     const mySeq = ++renderCounter;
     enable(btnGen, false);
     try {
-      const displaySize = 640; // UI preview target; Rust will snap to integer multiples
-      // Parse grid selection as NxM or single number
+      // Let Rust parse grid string like "32" or "384x192"
       const val = gridSel.value.trim();
-      const m = val.match(/^(\d+)(?:x(\d+))?$/i);
-      const gridWidth = m ? Number(m[1]) : Number(val);
-      const gridHeight = m && m[2] ? Number(m[2]) : gridWidth;
       const req = {
         image_data_url: selectedImage,
-        grid_width: gridWidth,
-        grid_height: gridHeight,
+        grid_width: 0,
+        grid_height: 0,
+        grid_value: val,
         algorithm: algoSel.value,
         palette_name: paletteSel.value,
-        display_size: displaySize,
         tone_gamma: tone ? Number(tone.value) : undefined,
         denoise_sigma: denoise ? Number(denoise.value) : undefined,
       };
       const up = (await invoke("render_preview", { req })) as string;
-      const base = (await invoke("render_base", { req })) as string;
       if (mySeq !== renderCounter) return; // stale
       upscaledDataURL = up;
-      baseDataURL = base;
       setPreview(upscaledDataURL);
     } catch (err) {
       console.error(err);
@@ -133,11 +135,7 @@ window.addEventListener("DOMContentLoaded", async () => {
     }
   }
 
-  function scheduleAutoRender() {
-    if (!selectedImage) return;
-    if (debounceTimer) window.clearTimeout(debounceTimer);
-    debounceTimer = window.setTimeout(() => { void renderNow(); }, 180);
-  }
+  // Live auto-render disabled per request; only render on Pixelate button press
 
   function handleFile(file: File) {
     const reader = new FileReader();
@@ -148,11 +146,7 @@ window.addEventListener("DOMContentLoaded", async () => {
         thumb.style.display = "";
         dropHint.style.display = "none";
       }
-      upscaledDataURL = null;
-      baseDataURL = null;
-      setPreview(null);
-      updateButtons();
-      scheduleAutoRender();
+      markDirty();
     };
     reader.readAsDataURL(file);
   }
@@ -191,13 +185,34 @@ window.addEventListener("DOMContentLoaded", async () => {
     const el = e.currentTarget as HTMLButtonElement;
     el.classList.add("is-pressed");
     setTimeout(() => el.classList.remove("is-pressed"), 90);
-    if (baseDataURL) downloadDataURL(baseDataURL, "bitcrush-base.png");
+    (async () => {
+      try {
+        if (!selectedImage) return;
+        if (!baseDataURL) {
+          const val = gridSel?.value?.trim() || "32";
+          const req = {
+            image_data_url: selectedImage,
+            grid_width: 0,
+            grid_height: 0,
+            grid_value: val,
+            algorithm: algoSel?.value || "Standard",
+            palette_name: paletteSel?.value || undefined,
+            tone_gamma: tone ? Number(tone.value) : undefined,
+            denoise_sigma: denoise ? Number(denoise.value) : undefined,
+          };
+          baseDataURL = (await invoke("render_base", { req })) as string;
+        }
+        if (baseDataURL) downloadDataURL(baseDataURL, "bitcrush-base.png");
+      } catch (err) {
+        console.error(err);
+      }
+    })();
   });
 
-  // Auto-render on control changes
-  paletteSel?.addEventListener("change", scheduleAutoRender);
-  algoSel?.addEventListener("change", scheduleAutoRender);
-  gridSel?.addEventListener("change", scheduleAutoRender);
-  tone?.addEventListener("input", scheduleAutoRender);
-  denoise?.addEventListener("input", scheduleAutoRender);
+  // Mark dirty on control changes, but do not auto-render
+  paletteSel?.addEventListener("change", markDirty);
+  algoSel?.addEventListener("change", markDirty);
+  gridSel?.addEventListener("change", markDirty);
+  tone?.addEventListener("input", markDirty);
+  denoise?.addEventListener("input", markDirty);
 });

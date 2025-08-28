@@ -45,14 +45,7 @@ fn resize_to_grid(img: &DynamicImage, grid_w: u32, grid_h: u32) -> RgbaImage {
     img.resize_exact(grid_w, grid_h, FilterType::Nearest).to_rgba8()
 }
 
-fn apply_preprocess(img: DynamicImage, denoise_sigma: Option<f32>) -> DynamicImage {
-    if let Some(sigma) = denoise_sigma {
-        if sigma > 0.01 {
-            return image::DynamicImage::ImageRgba8(image::imageops::blur(&img.to_rgba8(), sigma));
-        }
-    }
-    img
-}
+// (removed deprecated preprocess; denoise is now applied after grid resize)
 
 fn apply_tone_gamma(img: &mut RgbaImage, tone_gamma: Option<f32>) {
     if let Some(g) = tone_gamma {
@@ -67,6 +60,40 @@ fn apply_tone_gamma(img: &mut RgbaImage, tone_gamma: Option<f32>) {
             }
         }
     }
+}
+
+fn apply_denoise_rgba(img: RgbaImage, denoise_sigma: Option<f32>) -> RgbaImage {
+    if let Some(sigma) = denoise_sigma {
+        if sigma > 0.01 {
+            return image::imageops::blur(&img, sigma);
+        }
+    }
+    img
+}
+
+fn parse_grid_value(value: &str) -> Option<(u32, u32)> {
+    let s = value.trim().to_lowercase();
+    if let Some((a, b)) = s.split_once('x') {
+        let w = a.trim().parse::<u32>().ok()?;
+        let h = b.trim().parse::<u32>().ok()?;
+        return Some((w.max(1), h.max(1)));
+    }
+    if let Ok(n) = s.parse::<u32>() {
+        let n = n.max(1);
+        return Some((n, n));
+    }
+    None
+}
+
+fn resolve_grid(req: &RenderRequest) -> (u32, u32) {
+    if let Some(ref gv) = req.grid_value {
+        if let Some((w, h)) = parse_grid_value(gv) {
+            return (w, h);
+        }
+    }
+    let w = req.grid_width.max(1);
+    let h = req.grid_height.max(1);
+    (w, h)
 }
 
 fn upscale_center_to(img: &RgbaImage, display_size: u32) -> RgbaImage {
@@ -103,8 +130,9 @@ fn encode_png_base64(img: &RgbaImage) -> Result<String, EngineError> {
 
 pub fn render_preview_png(req: RenderRequest) -> Result<String, EngineError> {
     let img = decode_data_url_to_image(&req.image_data_url)?;
-    let pre = apply_preprocess(img, req.denoise_sigma);
-    let mut grid = resize_to_grid(&pre, req.grid_width, req.grid_height);
+    let (gw, gh) = resolve_grid(&req);
+    let mut grid = resize_to_grid(&img, gw, gh);
+    grid = apply_denoise_rgba(grid, req.denoise_sigma);
     apply_tone_gamma(&mut grid, req.tone_gamma);
     let algo = get_algorithm_by_name(req.algorithm.as_str());
     let palette_name = req.palette_name.as_deref().unwrap_or("Flying Tiger");
@@ -122,15 +150,16 @@ pub fn render_preview_png(req: RenderRequest) -> Result<String, EngineError> {
         "Atkinson" => apply_atkinson(&mut grid, &pal_slice),
         _ => algo.process(&mut grid, &pal_slice),
     }
-    let target = req.display_size.unwrap_or(640);
+    let target = req.display_size.unwrap_or(560);
     let up = upscale_center_to(&grid, target);
     encode_png_base64(&up)
 }
 
 pub fn render_base_png(req: RenderRequest) -> Result<String, EngineError> {
     let img = decode_data_url_to_image(&req.image_data_url)?;
-    let pre = apply_preprocess(img, req.denoise_sigma);
-    let mut grid = resize_to_grid(&pre, req.grid_width, req.grid_height);
+    let (gw, gh) = resolve_grid(&req);
+    let mut grid = resize_to_grid(&img, gw, gh);
+    grid = apply_denoise_rgba(grid, req.denoise_sigma);
     apply_tone_gamma(&mut grid, req.tone_gamma);
     let algo = get_algorithm_by_name(req.algorithm.as_str());
     let palette_name = req.palette_name.as_deref().unwrap_or("Flying Tiger");
@@ -154,8 +183,9 @@ pub fn render_base_png(req: RenderRequest) -> Result<String, EngineError> {
 // Versions that accept explicit palette colors (e.g., from GPL) to avoid relying on built-ins
 pub fn render_preview_png_with_palette(req: RenderRequest, palette_colors: Vec<[u8;3]>) -> Result<String, EngineError> {
     let img = decode_data_url_to_image(&req.image_data_url)?;
-    let pre = apply_preprocess(img, req.denoise_sigma);
-    let mut grid = resize_to_grid(&pre, req.grid_width, req.grid_height);
+    let (gw, gh) = resolve_grid(&req);
+    let mut grid = resize_to_grid(&img, gw, gh);
+    grid = apply_denoise_rgba(grid, req.denoise_sigma);
     apply_tone_gamma(&mut grid, req.tone_gamma);
     let algo = get_algorithm_by_name(req.algorithm.as_str());
     let pal_slice: Vec<[u8;3]> = palette_colors;
@@ -171,15 +201,16 @@ pub fn render_preview_png_with_palette(req: RenderRequest, palette_colors: Vec<[
         "Atkinson" => apply_atkinson(&mut grid, &pal_slice),
         _ => algo.process(&mut grid, &pal_slice),
     }
-    let target = req.display_size.unwrap_or(640);
+    let target = req.display_size.unwrap_or(560);
     let up = upscale_center_to(&grid, target);
     encode_png_base64(&up)
 }
 
 pub fn render_base_png_with_palette(req: RenderRequest, palette_colors: Vec<[u8;3]>) -> Result<String, EngineError> {
     let img = decode_data_url_to_image(&req.image_data_url)?;
-    let pre = apply_preprocess(img, req.denoise_sigma);
-    let mut grid = resize_to_grid(&pre, req.grid_width, req.grid_height);
+    let (gw, gh) = resolve_grid(&req);
+    let mut grid = resize_to_grid(&img, gw, gh);
+    grid = apply_denoise_rgba(grid, req.denoise_sigma);
     apply_tone_gamma(&mut grid, req.tone_gamma);
     let algo = get_algorithm_by_name(req.algorithm.as_str());
     let pal_slice: Vec<[u8;3]> = palette_colors;
