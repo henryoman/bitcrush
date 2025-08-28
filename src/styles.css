@@ -163,7 +163,7 @@ select, input, button {
 .text-secondary { color: var(--color-secondary); }
 
 /* Simple two-column structure for wider screens */
-.page { max-width: 2000px; margin: 0 auto; }
+.page { max-width: none; margin: 0 auto; }
 .layout { display: grid; grid-template-columns: 1fr; gap: 12px; padding: 12px; }
 @media (min-width: 960px) { .layout { grid-template-columns: 420px 1fr; align-items: start; } }
 .controls .card { margin-bottom: 12px; }
@@ -176,7 +176,7 @@ select, input, button {
 .actions { @apply flex gap-2 flex-wrap; }
 /* Place actions as a full-width row at the end of the grid flow */
 .layout > .actions { grid-column: 1 / -1; margin-top: 8px; }
-.preview-panel { height: 560px; display: flex; align-items: center; justify-content: center; }
+.preview-panel { height: 70vh; min-height: 560px; display: flex; align-items: center; justify-content: center; }
 
 .btn { @apply relative inline-flex items-center justify-center select-none border px-[14px] py-[10px] font-semibold text-[0.95rem] leading-none min-h-[36px];
   transition: background-color 120ms ease, color 120ms ease, box-shadow 120ms ease, transform 60ms ease;

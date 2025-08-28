@@ -61,3 +61,5 @@ pub fn apply_stucki(img: &mut RgbaImage, palette: &[[u8;3]]) {
 }
 
 
+
+

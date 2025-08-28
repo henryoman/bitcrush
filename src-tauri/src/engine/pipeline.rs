@@ -41,8 +41,8 @@ fn decode_data_url_to_image(data_url: &str) -> Result<DynamicImage, EngineError>
     Ok(img)
 }
 
-fn resize_to_grid(img: &DynamicImage, grid_size: u32) -> RgbaImage {
-    img.resize_exact(grid_size, grid_size, FilterType::Nearest).to_rgba8()
+fn resize_to_grid(img: &DynamicImage, grid_w: u32, grid_h: u32) -> RgbaImage {
+    img.resize_exact(grid_w, grid_h, FilterType::Nearest).to_rgba8()
 }
 
 fn apply_preprocess(img: DynamicImage, denoise_sigma: Option<f32>) -> DynamicImage {
@@ -70,16 +70,24 @@ fn apply_tone_gamma(img: &mut RgbaImage, tone_gamma: Option<f32>) {
 }
 
 fn upscale_center_to(img: &RgbaImage, display_size: u32) -> RgbaImage {
-    // force integer scale factor to avoid blurry pixels
-    let factor = (display_size / img.width()).max(1);
-    let scaled = image::imageops::resize(img, img.width() * factor, img.height() * factor, FilterType::Nearest);
+    // Maintain integer scaling on both axes and center on a square canvas
+    let max_dim = display_size.max(1);
+    let factor_w = (max_dim / img.width()).max(1);
+    let factor_h = (max_dim / img.height()).max(1);
+    let factor = factor_w.min(factor_h);
+    let scaled = image::imageops::resize(
+        img,
+        img.width() * factor,
+        img.height() * factor,
+        FilterType::Nearest,
+    );
     let mut canvas: RgbaImage = ImageBuffer::from_pixel(
-        display_size,
-        display_size,
+        max_dim,
+        max_dim,
         Rgba([0, 0, 0, 0]),
     );
-    let off_x = (display_size - scaled.width()) / 2;
-    let off_y = (display_size - scaled.height()) / 2;
+    let off_x = (max_dim - scaled.width()) / 2;
+    let off_y = (max_dim - scaled.height()) / 2;
     image::imageops::overlay(&mut canvas, &scaled, off_x.into(), off_y.into());
     canvas
 }
@@ -96,7 +104,7 @@ fn encode_png_base64(img: &RgbaImage) -> Result<String, EngineError> {
 pub fn render_preview_png(req: RenderRequest) -> Result<String, EngineError> {
     let img = decode_data_url_to_image(&req.image_data_url)?;
     let pre = apply_preprocess(img, req.denoise_sigma);
-    let mut grid = resize_to_grid(&pre, req.grid_size);
+    let mut grid = resize_to_grid(&pre, req.grid_width, req.grid_height);
     apply_tone_gamma(&mut grid, req.tone_gamma);
     let algo = get_algorithm_by_name(req.algorithm.as_str());
     let palette_name = req.palette_name.as_deref().unwrap_or("Flying Tiger");
@@ -115,16 +123,14 @@ pub fn render_preview_png(req: RenderRequest) -> Result<String, EngineError> {
         _ => algo.process(&mut grid, &pal_slice),
     }
     let target = req.display_size.unwrap_or(640);
-    // Snap display size down to nearest multiple of grid to keep integer scaling
-    let snapped = (target / req.grid_size).max(1) * req.grid_size;
-    let up = upscale_center_to(&grid, snapped);
+    let up = upscale_center_to(&grid, target);
     encode_png_base64(&up)
 }
 
 pub fn render_base_png(req: RenderRequest) -> Result<String, EngineError> {
     let img = decode_data_url_to_image(&req.image_data_url)?;
     let pre = apply_preprocess(img, req.denoise_sigma);
-    let mut grid = resize_to_grid(&pre, req.grid_size);
+    let mut grid = resize_to_grid(&pre, req.grid_width, req.grid_height);
     apply_tone_gamma(&mut grid, req.tone_gamma);
     let algo = get_algorithm_by_name(req.algorithm.as_str());
     let palette_name = req.palette_name.as_deref().unwrap_or("Flying Tiger");
@@ -149,7 +155,7 @@ pub fn render_base_png(req: RenderRequest) -> Result<String, EngineError> {
 pub fn render_preview_png_with_palette(req: RenderRequest, palette_colors: Vec<[u8;3]>) -> Result<String, EngineError> {
     let img = decode_data_url_to_image(&req.image_data_url)?;
     let pre = apply_preprocess(img, req.denoise_sigma);
-    let mut grid = resize_to_grid(&pre, req.grid_size);
+    let mut grid = resize_to_grid(&pre, req.grid_width, req.grid_height);
     apply_tone_gamma(&mut grid, req.tone_gamma);
     let algo = get_algorithm_by_name(req.algorithm.as_str());
     let pal_slice: Vec<[u8;3]> = palette_colors;
@@ -166,15 +172,14 @@ pub fn render_preview_png_with_palette(req: RenderRequest, palette_colors: Vec<[
         _ => algo.process(&mut grid, &pal_slice),
     }
     let target = req.display_size.unwrap_or(640);
-    let snapped = (target / req.grid_size).max(1) * req.grid_size;
-    let up = upscale_center_to(&grid, snapped);
+    let up = upscale_center_to(&grid, target);
     encode_png_base64(&up)
 }
 
 pub fn render_base_png_with_palette(req: RenderRequest, palette_colors: Vec<[u8;3]>) -> Result<String, EngineError> {
     let img = decode_data_url_to_image(&req.image_data_url)?;
     let pre = apply_preprocess(img, req.denoise_sigma);
-    let mut grid = resize_to_grid(&pre, req.grid_size);
+    let mut grid = resize_to_grid(&pre, req.grid_width, req.grid_height);
     apply_tone_gamma(&mut grid, req.tone_gamma);
     let algo = get_algorithm_by_name(req.algorithm.as_str());
     let pal_slice: Vec<[u8;3]> = palette_colors;

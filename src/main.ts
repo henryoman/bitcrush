@@ -53,6 +53,8 @@ window.addEventListener("DOMContentLoaded", async () => {
   let selectedImage: string | null = null;
   let upscaledDataURL: string | null = null;
   let baseDataURL: string | null = null;
+  let renderCounter = 0; // sequence for stale response protection
+  let debounceTimer: number | undefined;
 
   await loadPalettes();
 
@@ -67,6 +69,14 @@ window.addEventListener("DOMContentLoaded", async () => {
       output.src = "";
       outputEmpty.style.display = "";
     }
+  }
+
+  function showError(message: string) {
+    if (!output || !outputEmpty) return;
+    output.style.display = "none";
+    output.src = "";
+    outputEmpty.style.display = "";
+    outputEmpty.textContent = `Error: ${message}`;
   }
 
   function updateButtons() {
@@ -87,6 +97,48 @@ window.addEventListener("DOMContentLoaded", async () => {
   tone?.addEventListener("input", updateToneLabel);
   denoise?.addEventListener("input", updateDenoiseLabel);
 
+  async function renderNow() {
+    if (!selectedImage || !algoSel || !gridSel || !paletteSel) return;
+    const mySeq = ++renderCounter;
+    enable(btnGen, false);
+    try {
+      const displaySize = 640; // UI preview target; Rust will snap to integer multiples
+      // Parse grid selection as NxM or single number
+      const val = gridSel.value.trim();
+      const m = val.match(/^(\d+)(?:x(\d+))?$/i);
+      const gridWidth = m ? Number(m[1]) : Number(val);
+      const gridHeight = m && m[2] ? Number(m[2]) : gridWidth;
+      const req = {
+        image_data_url: selectedImage,
+        grid_width: gridWidth,
+        grid_height: gridHeight,
+        algorithm: algoSel.value,
+        palette_name: paletteSel.value,
+        display_size: displaySize,
+        tone_gamma: tone ? Number(tone.value) : undefined,
+        denoise_sigma: denoise ? Number(denoise.value) : undefined,
+      };
+      const up = (await invoke("render_preview", { req })) as string;
+      const base = (await invoke("render_base", { req })) as string;
+      if (mySeq !== renderCounter) return; // stale
+      upscaledDataURL = up;
+      baseDataURL = base;
+      setPreview(upscaledDataURL);
+    } catch (err) {
+      console.error(err);
+      showError(String(err));
+    } finally {
+      if (renderCounter === mySeq) enable(btnGen, true);
+      updateButtons();
+    }
+  }
+
+  function scheduleAutoRender() {
+    if (!selectedImage) return;
+    if (debounceTimer) window.clearTimeout(debounceTimer);
+    debounceTimer = window.setTimeout(() => { void renderNow(); }, 180);
+  }
+
   function handleFile(file: File) {
     const reader = new FileReader();
     reader.onload = (e) => {
@@ -100,6 +152,7 @@ window.addEventListener("DOMContentLoaded", async () => {
       baseDataURL = null;
       setPreview(null);
       updateButtons();
+      scheduleAutoRender();
     };
     reader.readAsDataURL(file);
   }
@@ -125,30 +178,7 @@ window.addEventListener("DOMContentLoaded", async () => {
       fileInput?.click();
       return;
     }
-    if (!algoSel || !gridSel || !paletteSel) return;
-    enable(btnGen, false);
-    try {
-      const displaySize = 640; // UI preview target; Rust will snap to integer multiples
-      const req = {
-        image_data_url: selectedImage,
-        grid_size: Number(gridSel.value),
-        algorithm: algoSel.value,
-        palette_name: paletteSel.value,
-        display_size: displaySize,
-        tone_gamma: tone ? Number(tone.value) : undefined,
-        denoise_sigma: denoise ? Number(denoise.value) : undefined,
-      };
-      const up = (await invoke("render_preview", { req })) as string;
-      const base = (await invoke("render_base", { req })) as string;
-      upscaledDataURL = up;
-      baseDataURL = base;
-      setPreview(upscaledDataURL);
-    } catch (err) {
-      console.error(err);
-    } finally {
-      enable(btnGen, true);
-      updateButtons();
-    }
+    await renderNow();
   });
 
   btnUpscaled?.addEventListener("click", (e) => {
@@ -163,4 +193,11 @@ window.addEventListener("DOMContentLoaded", async () => {
     setTimeout(() => el.classList.remove("is-pressed"), 90);
     if (baseDataURL) downloadDataURL(baseDataURL, "bitcrush-base.png");
   });
+
+  // Auto-render on control changes
+  paletteSel?.addEventListener("change", scheduleAutoRender);
+  algoSel?.addEventListener("change", scheduleAutoRender);
+  gridSel?.addEventListener("change", scheduleAutoRender);
+  tone?.addEventListener("input", scheduleAutoRender);
+  denoise?.addEventListener("input", scheduleAutoRender);
 });
