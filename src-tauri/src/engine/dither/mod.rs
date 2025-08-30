@@ -7,4 +7,7 @@ pub mod dual_color;
 pub mod randomized_selective;
 pub mod stucki;
 pub mod atkinson;
+pub mod jarvis_judice_ninke;
+pub mod burkes;
+pub mod sierra;
 

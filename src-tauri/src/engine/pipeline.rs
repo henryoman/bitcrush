@@ -15,6 +15,9 @@ use super::dither::{
     randomized_selective::apply_randomized_selective,
     stucki::apply_stucki,
     atkinson::apply_atkinson,
+    jarvis_judice_ninke::apply_jjn,
+    burkes::apply_burkes,
+    sierra::{apply_sierra, apply_two_row_sierra, apply_sierra_lite},
 };
 use super::palettes::get_palette_by_name;
 
@@ -148,6 +151,11 @@ pub fn render_preview_png(req: RenderRequest) -> Result<String, EngineError> {
         "Randomized Selective" => apply_randomized_selective(&mut grid, &pal_slice, 30.0),
         "Stucki" => apply_stucki(&mut grid, &pal_slice),
         "Atkinson" => apply_atkinson(&mut grid, &pal_slice),
+        "Jarvis-Judice-Ninke" | "Jarvis, Judice, and Ninke" => apply_jjn(&mut grid, &pal_slice),
+        "Burkes" => apply_burkes(&mut grid, &pal_slice),
+        "Sierra" => apply_sierra(&mut grid, &pal_slice),
+        "Two-Row Sierra" => apply_two_row_sierra(&mut grid, &pal_slice),
+        "Sierra Lite" => apply_sierra_lite(&mut grid, &pal_slice),
         _ => algo.process(&mut grid, &pal_slice),
     }
     let target = req.display_size.unwrap_or(560);
@@ -175,6 +183,11 @@ pub fn render_base_png(req: RenderRequest) -> Result<String, EngineError> {
         "Randomized Selective" => apply_randomized_selective(&mut grid, &pal_slice, 30.0),
         "Stucki" => apply_stucki(&mut grid, &pal_slice),
         "Atkinson" => apply_atkinson(&mut grid, &pal_slice),
+        "Jarvis-Judice-Ninke" | "Jarvis, Judice, and Ninke" => apply_jjn(&mut grid, &pal_slice),
+        "Burkes" => apply_burkes(&mut grid, &pal_slice),
+        "Sierra" => apply_sierra(&mut grid, &pal_slice),
+        "Two-Row Sierra" => apply_two_row_sierra(&mut grid, &pal_slice),
+        "Sierra Lite" => apply_sierra_lite(&mut grid, &pal_slice),
         _ => algo.process(&mut grid, &pal_slice),
     }
     encode_png_base64(&grid)
@@ -199,6 +212,11 @@ pub fn render_preview_png_with_palette(req: RenderRequest, palette_colors: Vec<[
         "Randomized Selective" => apply_randomized_selective(&mut grid, &pal_slice, 30.0),
         "Stucki" => apply_stucki(&mut grid, &pal_slice),
         "Atkinson" => apply_atkinson(&mut grid, &pal_slice),
+        "Jarvis-Judice-Ninke" | "Jarvis, Judice, and Ninke" => apply_jjn(&mut grid, &pal_slice),
+        "Burkes" => apply_burkes(&mut grid, &pal_slice),
+        "Sierra" => apply_sierra(&mut grid, &pal_slice),
+        "Two-Row Sierra" => apply_two_row_sierra(&mut grid, &pal_slice),
+        "Sierra Lite" => apply_sierra_lite(&mut grid, &pal_slice),
         _ => algo.process(&mut grid, &pal_slice),
     }
     let target = req.display_size.unwrap_or(560);
@@ -224,6 +242,11 @@ pub fn render_base_png_with_palette(req: RenderRequest, palette_colors: Vec<[u8;
         "Randomized Selective" => apply_randomized_selective(&mut grid, &pal_slice, 30.0),
         "Stucki" => apply_stucki(&mut grid, &pal_slice),
         "Atkinson" => apply_atkinson(&mut grid, &pal_slice),
+        "Jarvis-Judice-Ninke" | "Jarvis, Judice, and Ninke" => apply_jjn(&mut grid, &pal_slice),
+        "Burkes" => apply_burkes(&mut grid, &pal_slice),
+        "Sierra" => apply_sierra(&mut grid, &pal_slice),
+        "Two-Row Sierra" => apply_two_row_sierra(&mut grid, &pal_slice),
+        "Sierra Lite" => apply_sierra_lite(&mut grid, &pal_slice),
         _ => algo.process(&mut grid, &pal_slice),
     }
     encode_png_base64(&grid)
