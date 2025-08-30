@@ -25,12 +25,17 @@ impl Algorithm for FloydSteinberg {
         let h = img.height() as i32;
         let mut buf = img.clone();
         for y in 0..h {
-            for x in 0..w {
+            let left_to_right = (y % 2) == 0;
+            let xr: Box<dyn Iterator<Item = i32>> = if left_to_right {
+                Box::new(0..w)
+            } else {
+                Box::new((0..w).rev())
+            };
+            for x in xr {
                 let p = buf.get_pixel(x as u32, y as u32).0;
-                let (r,g,b,a) = (p[0], p[1], p[2], p[3]);
-                let chosen = find_closest_palette_color(r,g,b,palette);
-                let idx = (x as u32, y as u32);
-                img.put_pixel(idx.0, idx.1, Rgba([chosen[0], chosen[1], chosen[2], a]));
+                let (r, g, b, a) = (p[0], p[1], p[2], p[3]);
+                let chosen = find_closest_palette_color(r, g, b, palette);
+                img.put_pixel(x as u32, y as u32, Rgba([chosen[0], chosen[1], chosen[2], a]));
                 let err_r = r as i16 - chosen[0] as i16;
                 let err_g = g as i16 - chosen[1] as i16;
                 let err_b = b as i16 - chosen[2] as i16;
@@ -49,10 +54,17 @@ impl Algorithm for FloydSteinberg {
                     }
                 };
 
-                distribute(x+1, y    , 7, 16, &mut buf);
-                distribute(x-1, y+1  , 3, 16, &mut buf);
-                distribute(x  , y+1  , 5, 16, &mut buf);
-                distribute(x+1, y+1  , 1, 16, &mut buf);
+                if left_to_right {
+                    distribute(x + 1, y, 7, 16, &mut buf);
+                    distribute(x - 1, y + 1, 3, 16, &mut buf);
+                    distribute(x, y + 1, 5, 16, &mut buf);
+                    distribute(x + 1, y + 1, 1, 16, &mut buf);
+                } else {
+                    distribute(x - 1, y, 7, 16, &mut buf);
+                    distribute(x + 1, y + 1, 3, 16, &mut buf);
+                    distribute(x, y + 1, 5, 16, &mut buf);
+                    distribute(x - 1, y + 1, 1, 16, &mut buf);
+                }
             }
         }
     }
