@@ -3,23 +3,23 @@ use image::{imageops::FilterType, DynamicImage, ImageBuffer, ImageFormat, Rgba, 
 use std::io::Cursor;
 use thiserror::Error;
 
-use crate::engine::algorithms::Algorithm;
 use super::algorithms::get_algorithm_by_name;
 use super::dither::{
-    bayer::Bayer,
-    floyd_steinberg::FloydSteinberg,
-    selective::apply_selective,
-    ordered_selective::apply_ordered_selective,
+    atkinson::apply_atkinson,
+    bayer::{Bayer, Bayer2, Bayer8},
+    burkes::apply_burkes,
     dual_color::apply_dual_color,
     edge::apply_edge_dithering,
-    randomized_selective::apply_randomized_selective,
-    stucki::apply_stucki,
-    atkinson::apply_atkinson,
+    floyd_steinberg::FloydSteinberg,
     jarvis_judice_ninke::apply_jjn,
-    burkes::apply_burkes,
-    sierra::{apply_sierra, apply_two_row_sierra, apply_sierra_lite},
+    ordered_selective::apply_ordered_selective,
+    randomized_selective::apply_randomized_selective,
+    selective::apply_selective,
+    sierra::{apply_sierra, apply_sierra_lite, apply_two_row_sierra},
+    stucki::apply_stucki,
 };
 use super::palettes::get_palette_by_name;
+use crate::engine::algorithms::Algorithm;
 
 #[derive(Debug, Error)]
 pub enum EngineError {
@@ -39,13 +39,16 @@ fn decode_data_url_to_image(data_url: &str) -> Result<DynamicImage, EngineError>
     }
     use base64::engine::general_purpose::STANDARD as B64;
     use base64::Engine;
-    let bytes = B64.decode(b64).map_err(|_| EngineError::UnsupportedDataUrl)?;
+    let bytes = B64
+        .decode(b64)
+        .map_err(|_| EngineError::UnsupportedDataUrl)?;
     let img = image::load_from_memory(&bytes)?;
     Ok(img)
 }
 
 fn resize_to_grid(img: &DynamicImage, grid_w: u32, grid_h: u32) -> RgbaImage {
-    img.resize_exact(grid_w, grid_h, FilterType::Nearest).to_rgba8()
+    img.resize_exact(grid_w, grid_h, FilterType::Nearest)
+        .to_rgba8()
 }
 
 // (removed deprecated preprocess; denoise is now applied after grid resize)
@@ -55,11 +58,11 @@ fn apply_tone_gamma(img: &mut RgbaImage, tone_gamma: Option<f32>) {
         if (g - 1.0).abs() > 0.001 {
             let inv = 1.0 / g.max(0.05);
             for p in img.pixels_mut() {
-                let [r,gc,b,a] = p.0;
-                let cr = ((r as f32 / 255.0).powf(inv) * 255.0).clamp(0.0,255.0) as u8;
-                let cg = ((gc as f32 / 255.0).powf(inv) * 255.0).clamp(0.0,255.0) as u8;
-                let cb = ((b as f32 / 255.0).powf(inv) * 255.0).clamp(0.0,255.0) as u8;
-                *p = Rgba([cr,cg,cb,a]);
+                let [r, gc, b, a] = p.0;
+                let cr = ((r as f32 / 255.0).powf(inv) * 255.0).clamp(0.0, 255.0) as u8;
+                let cg = ((gc as f32 / 255.0).powf(inv) * 255.0).clamp(0.0, 255.0) as u8;
+                let cb = ((b as f32 / 255.0).powf(inv) * 255.0).clamp(0.0, 255.0) as u8;
+                *p = Rgba([cr, cg, cb, a]);
             }
         }
     }
@@ -111,11 +114,7 @@ fn upscale_center_to(img: &RgbaImage, display_size: u32) -> RgbaImage {
         img.height() * factor,
         FilterType::Nearest,
     );
-    let mut canvas: RgbaImage = ImageBuffer::from_pixel(
-        max_dim,
-        max_dim,
-        Rgba([0, 0, 0, 0]),
-    );
+    let mut canvas: RgbaImage = ImageBuffer::from_pixel(max_dim, max_dim, Rgba([0, 0, 0, 0]));
     let off_x = (max_dim - scaled.width()) / 2;
     let off_y = (max_dim - scaled.height()) / 2;
     image::imageops::overlay(&mut canvas, &scaled, off_x.into(), off_y.into());
@@ -140,10 +139,12 @@ pub fn render_preview_png(req: RenderRequest) -> Result<String, EngineError> {
     let algo = get_algorithm_by_name(req.algorithm.as_str());
     let palette_name = req.palette_name.as_deref().unwrap_or("Flying Tiger");
     let palette = get_palette_by_name(palette_name);
-    let pal_slice: Vec<[u8;3]> = palette.colors.clone();
+    let pal_slice: Vec<[u8; 3]> = palette.colors.clone();
     match req.algorithm.as_str() {
         "Floyd-Steinberg" | "Floyd–Steinberg" => FloydSteinberg.process(&mut grid, &pal_slice),
         "Bayer" => Bayer.process(&mut grid, &pal_slice),
+        "Bayer 2x2" => Bayer2.process(&mut grid, &pal_slice),
+        "Bayer 8x8" => Bayer8.process(&mut grid, &pal_slice),
         "Selective" => apply_selective(&mut grid, &pal_slice, 25.0),
         "Ordered Selective" => apply_ordered_selective(&mut grid, &pal_slice, 25.0),
         "Dual Color Dithering" => apply_dual_color(&mut grid, &pal_slice),
@@ -172,10 +173,12 @@ pub fn render_base_png(req: RenderRequest) -> Result<String, EngineError> {
     let algo = get_algorithm_by_name(req.algorithm.as_str());
     let palette_name = req.palette_name.as_deref().unwrap_or("Flying Tiger");
     let palette = get_palette_by_name(palette_name);
-    let pal_slice: Vec<[u8;3]> = palette.colors.clone();
+    let pal_slice: Vec<[u8; 3]> = palette.colors.clone();
     match req.algorithm.as_str() {
         "Floyd-Steinberg" | "Floyd–Steinberg" => FloydSteinberg.process(&mut grid, &pal_slice),
         "Bayer" => Bayer.process(&mut grid, &pal_slice),
+        "Bayer 2x2" => Bayer2.process(&mut grid, &pal_slice),
+        "Bayer 8x8" => Bayer8.process(&mut grid, &pal_slice),
         "Selective" => apply_selective(&mut grid, &pal_slice, 25.0),
         "Ordered Selective" => apply_ordered_selective(&mut grid, &pal_slice, 25.0),
         "Dual Color Dithering" => apply_dual_color(&mut grid, &pal_slice),
@@ -194,17 +197,22 @@ pub fn render_base_png(req: RenderRequest) -> Result<String, EngineError> {
 }
 
 // Versions that accept explicit palette colors (e.g., from GPL) to avoid relying on built-ins
-pub fn render_preview_png_with_palette(req: RenderRequest, palette_colors: Vec<[u8;3]>) -> Result<String, EngineError> {
+pub fn render_preview_png_with_palette(
+    req: RenderRequest,
+    palette_colors: Vec<[u8; 3]>,
+) -> Result<String, EngineError> {
     let img = decode_data_url_to_image(&req.image_data_url)?;
     let (gw, gh) = resolve_grid(&req);
     let mut grid = resize_to_grid(&img, gw, gh);
     grid = apply_denoise_rgba(grid, req.denoise_sigma);
     apply_tone_gamma(&mut grid, req.tone_gamma);
     let algo = get_algorithm_by_name(req.algorithm.as_str());
-    let pal_slice: Vec<[u8;3]> = palette_colors;
+    let pal_slice: Vec<[u8; 3]> = palette_colors;
     match req.algorithm.as_str() {
         "Floyd-Steinberg" | "Floyd–Steinberg" => FloydSteinberg.process(&mut grid, &pal_slice),
         "Bayer" => Bayer.process(&mut grid, &pal_slice),
+        "Bayer 2x2" => Bayer2.process(&mut grid, &pal_slice),
+        "Bayer 8x8" => Bayer8.process(&mut grid, &pal_slice),
         "Selective" => apply_selective(&mut grid, &pal_slice, 25.0),
         "Ordered Selective" => apply_ordered_selective(&mut grid, &pal_slice, 25.0),
         "Dual Color Dithering" => apply_dual_color(&mut grid, &pal_slice),
@@ -224,17 +232,22 @@ pub fn render_preview_png_with_palette(req: RenderRequest, palette_colors: Vec<[
     encode_png_base64(&up)
 }
 
-pub fn render_base_png_with_palette(req: RenderRequest, palette_colors: Vec<[u8;3]>) -> Result<String, EngineError> {
+pub fn render_base_png_with_palette(
+    req: RenderRequest,
+    palette_colors: Vec<[u8; 3]>,
+) -> Result<String, EngineError> {
     let img = decode_data_url_to_image(&req.image_data_url)?;
     let (gw, gh) = resolve_grid(&req);
     let mut grid = resize_to_grid(&img, gw, gh);
     grid = apply_denoise_rgba(grid, req.denoise_sigma);
     apply_tone_gamma(&mut grid, req.tone_gamma);
     let algo = get_algorithm_by_name(req.algorithm.as_str());
-    let pal_slice: Vec<[u8;3]> = palette_colors;
+    let pal_slice: Vec<[u8; 3]> = palette_colors;
     match req.algorithm.as_str() {
         "Floyd-Steinberg" | "Floyd–Steinberg" => FloydSteinberg.process(&mut grid, &pal_slice),
         "Bayer" => Bayer.process(&mut grid, &pal_slice),
+        "Bayer 2x2" => Bayer2.process(&mut grid, &pal_slice),
+        "Bayer 8x8" => Bayer8.process(&mut grid, &pal_slice),
         "Selective" => apply_selective(&mut grid, &pal_slice, 25.0),
         "Ordered Selective" => apply_ordered_selective(&mut grid, &pal_slice, 25.0),
         "Dual Color Dithering" => apply_dual_color(&mut grid, &pal_slice),
@@ -251,5 +264,3 @@ pub fn render_base_png_with_palette(req: RenderRequest, palette_colors: Vec<[u8;
     }
     encode_png_base64(&grid)
 }
-
-
