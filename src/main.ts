@@ -1,4 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
+import { mountRoutes } from "./app/router";
 
 type PaletteTuple = [string, number[][]];
 
@@ -32,6 +33,8 @@ async function loadPalettes() {
 }
 
 window.addEventListener("DOMContentLoaded", async () => {
+  // Set up simple in-app routing between Pixelizer and Filters pages
+  mountRoutes();
   // Ensure dragging works on overlay titlebar for all platforms
   const dropzone = qs<HTMLDivElement>("#dropzone");
   const fileInput = qs<HTMLInputElement>("#file");
@@ -49,6 +52,15 @@ window.addEventListener("DOMContentLoaded", async () => {
   const btnGen = qs<HTMLButtonElement>("#generate");
   const btnUpscaled = qs<HTMLButtonElement>("#download-upscaled");
   const btnBase = qs<HTMLButtonElement>("#download-base");
+
+  // Filters page elements
+  const fDropzone = qs<HTMLDivElement>("#filters-dropzone");
+  const fFileInput = qs<HTMLInputElement>("#filters-file");
+  const fThumb = qs<HTMLImageElement>("#filters-thumb");
+  const fDropHint = qs<HTMLDivElement>("#filters-dropHint");
+  const fOutput = qs<HTMLImageElement>("#filters-output");
+  const fOutputEmpty = qs<HTMLDivElement>("#filters-outputEmpty");
+  const fBtnGen = qs<HTMLButtonElement>("#filters-generate");
 
   let selectedImage: string | null = null;
   let upscaledDataURL: string | null = null;
@@ -215,4 +227,87 @@ window.addEventListener("DOMContentLoaded", async () => {
   gridSel?.addEventListener("change", markDirty);
   tone?.addEventListener("input", markDirty);
   denoise?.addEventListener("input", markDirty);
+
+  // ---------------- Filters page wiring ----------------
+  let filtersImage: string | null = null;
+
+  function filtersSetPreview(src: string | null) {
+    if (!fOutput || !fOutputEmpty) return;
+    if (src) {
+      fOutput.style.display = "";
+      fOutput.src = src;
+      fOutputEmpty.style.display = "none";
+    } else {
+      fOutput.style.display = "none";
+      fOutput.src = "";
+      fOutputEmpty.style.display = "";
+    }
+  }
+
+  function filtersShowError(message: string) {
+    if (!fOutput || !fOutputEmpty) return;
+    fOutput.style.display = "none";
+    fOutput.src = "";
+    fOutputEmpty.style.display = "";
+    fOutputEmpty.textContent = `Error: ${message}`;
+  }
+
+  function filtersHandleFile(file: File) {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      filtersImage = String(e.target?.result || "");
+      if (fThumb && fDropHint) {
+        fThumb.src = filtersImage;
+        fThumb.style.display = "";
+        fDropHint.style.display = "none";
+      }
+      filtersSetPreview(null);
+    };
+    reader.readAsDataURL(file);
+  }
+
+  async function renderFiltersNow() {
+    if (!filtersImage) return;
+    try {
+      const req = {
+        image_data_url: filtersImage,
+        grid_width: 0,
+        grid_height: 0,
+        grid_value: undefined as unknown as string | undefined,
+        algorithm: "Standard",
+        palette_name: undefined as unknown as string | undefined,
+        display_size: 560,
+        tone_gamma: undefined as unknown as number | undefined,
+        denoise_sigma: undefined as unknown as number | undefined,
+      };
+      const up = (await invoke("render_filters_preview", { req })) as string;
+      filtersSetPreview(up);
+    } catch (err) {
+      console.error(err);
+      filtersShowError(String(err));
+    }
+  }
+
+  fDropzone?.addEventListener("click", () => fFileInput?.click());
+  fDropzone?.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" || e.key === " ") fFileInput?.click();
+  });
+  fDropzone?.addEventListener("dragover", (e) => e.preventDefault());
+  fDropzone?.addEventListener("drop", (e) => {
+    e.preventDefault();
+    const f = e.dataTransfer?.files?.[0];
+    if (f) filtersHandleFile(f);
+  });
+  fFileInput?.addEventListener("change", (e) => {
+    const t = e.target as HTMLInputElement;
+    const f = t.files?.[0];
+    if (f) filtersHandleFile(f);
+  });
+  fBtnGen?.addEventListener("click", async () => {
+    if (!filtersImage) {
+      fFileInput?.click();
+      return;
+    }
+    await renderFiltersNow();
+  });
 });
