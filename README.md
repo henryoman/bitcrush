@@ -1,6 +1,6 @@
 ![Bitcrush Logo](/src/assets/bitcrush.png)
 
-# Bitcrush
+# bitcrush
 
 [![Built with Rust](https://img.shields.io/badge/rust-000000?style=flat-square&logo=rust&logoColor=white)](https://www.rust-lang.org/)
 [![Built with Tauri](https://img.shields.io/badge/tauri-24C8DB?style=flat-square&logo=tauri&logoColor=black)](https://tauri.app/)
