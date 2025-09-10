@@ -19,6 +19,17 @@ function downloadDataURL(dataURL: string, filename: string) {
   a.remove();
 }
 
+function flashDownload(el: HTMLButtonElement) {
+  const prev = el.textContent;
+  const { width } = el.getBoundingClientRect();
+  el.style.width = `${width}px`;
+  el.textContent = "Saved!";
+  setTimeout(() => {
+    el.textContent = prev;
+    el.style.width = "";
+  }, 1200);
+}
+
 async function loadPalettes() {
   const list = (await invoke("list_palettes")) as PaletteTuple[];
   const sel = qs<HTMLSelectElement>("#palette");
@@ -191,7 +202,10 @@ window.addEventListener("DOMContentLoaded", async () => {
     const el = e.currentTarget as HTMLButtonElement;
     el.classList.add("is-pressed");
     setTimeout(() => el.classList.remove("is-pressed"), 90);
-    if (upscaledDataURL) downloadDataURL(upscaledDataURL, "bitcrush-upscaled.png");
+    if (upscaledDataURL) {
+      downloadDataURL(upscaledDataURL, "bitcrush-upscaled.png");
+      flashDownload(el);
+    }
   });
   btnBase?.addEventListener("click", (e) => {
     const el = e.currentTarget as HTMLButtonElement;
@@ -214,7 +228,10 @@ window.addEventListener("DOMContentLoaded", async () => {
           };
           baseDataURL = (await invoke("render_base", { req })) as string;
         }
-        if (baseDataURL) downloadDataURL(baseDataURL, "bitcrush-base.png");
+        if (baseDataURL) {
+          downloadDataURL(baseDataURL, "bitcrush-base.png");
+          flashDownload(el);
+        }
       } catch (err) {
         console.error(err);
       }
