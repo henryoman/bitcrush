@@ -3,7 +3,7 @@ use image::{imageops::FilterType, DynamicImage, ImageFormat, Rgba, RgbaImage};
 use std::io::Cursor;
 use thiserror::Error;
 
-mod vhs;
+// Filters pipeline is intentionally isolated from pixelizer-specific algorithms/dithers.
 
 #[derive(Debug, Error)]
 pub enum FilterError {
@@ -38,6 +38,7 @@ fn encode_png_base64(img: &RgbaImage) -> Result<String, FilterError> {
     Ok(format!("data:image/png;base64,{}", b64))
 }
 
+// Keep handy for future filter passes that need explicit resizing.
 #[allow(dead_code)]
 fn resize_exact_rgba(img: &DynamicImage, w: u32, h: u32) -> RgbaImage {
     img.resize_exact(w, h, FilterType::Nearest).to_rgba8()
@@ -61,21 +62,23 @@ fn upscale_center_to(img: &RgbaImage, display_size: u32) -> RgbaImage {
     canvas
 }
 
+/// Placeholder for the Filters pipeline: start by mirroring Pixelizer's resize/tone/denoise flow
+/// but keep it isolated so future filter-specific steps live here.
+// -------- 1D Filter Framework --------
+
 pub trait Filter {
-    fn name(&self) -> &'static str;
     fn apply(&self, img: &mut RgbaImage, amount: f32);
 }
 
 struct IdentityFilter;
 impl Filter for IdentityFilter {
-    fn name(&self) -> &'static str { "Identity" }
     fn apply(&self, _img: &mut RgbaImage, _amount: f32) {}
 }
 
 struct BrightnessFilter;
 impl Filter for BrightnessFilter {
-    fn name(&self) -> &'static str { "Brightness" }
     fn apply(&self, img: &mut RgbaImage, amount: f32) {
+        // amount in [0,1] mapped to [-1.0, +1.0] offset
         let centered = (amount.clamp(0.0, 1.0) - 0.5) * 2.0; // -1..1
         let delta = (centered * 255.0) as i32;
         for p in img.pixels_mut() {
@@ -90,8 +93,8 @@ impl Filter for BrightnessFilter {
 
 struct ContrastFilter;
 impl Filter for ContrastFilter {
-    fn name(&self) -> &'static str { "Contrast" }
     fn apply(&self, img: &mut RgbaImage, amount: f32) {
+        // amount in [0,1] mapped to [0.0, 2.0], 1.0 is neutral
         let scale = 2.0_f32.powf((amount.clamp(0.0, 1.0) - 0.5) * 2.0);
         for p in img.pixels_mut() {
             let [r, g, b, a] = p.0;
@@ -113,7 +116,6 @@ fn get_filter_by_name(name: &str) -> Option<Box<dyn Filter + Send + Sync>> {
         "Identity" => Some(Box::new(IdentityFilter)),
         "Brightness" => Some(Box::new(BrightnessFilter)),
         "Contrast" => Some(Box::new(ContrastFilter)),
-        "VHS" => Some(Box::new(vhs::VhsFilter)),
         _ => None,
     }
 }
