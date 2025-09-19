@@ -25,3 +25,30 @@ pub struct RenderRequest {
 }
 
 
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct FilterStep {
+    /// Unique filter name/id (e.g., "Identity", "Brightness")
+    pub name: String,
+    /// Normalized strength in [0.0, 1.0]; filter-specific interpretation
+    #[serde(default = "default_amount")]
+    pub amount: f32,
+    /// Whether this step should be applied
+    #[serde(default = "default_enabled")]
+    pub enabled: bool,
+}
+
+fn default_amount() -> f32 { 1.0 }
+fn default_enabled() -> bool { true }
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct FilterChainRequest {
+    /// Data URL string (e.g. "data:image/png;base64,<...>")
+    pub image_data_url: String,
+    /// Desired preview size; upscaled image width/height (integer scaling)
+    #[serde(default)]
+    pub display_size: Option<u32>,
+    /// Ordered list of filter steps to apply
+    #[serde(default)]
+    pub steps: Vec<FilterStep>,
+}
+

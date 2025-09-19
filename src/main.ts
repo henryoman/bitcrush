@@ -288,16 +288,12 @@ window.addEventListener("DOMContentLoaded", async () => {
     try {
       const req = {
         image_data_url: filtersImage,
-        grid_width: 0,
-        grid_height: 0,
-        grid_value: undefined as unknown as string | undefined,
-        algorithm: "Standard",
-        palette_name: undefined as unknown as string | undefined,
         display_size: 560,
-        tone_gamma: undefined as unknown as number | undefined,
-        denoise_sigma: undefined as unknown as number | undefined,
+        steps: [
+          { name: "VHS", amount: 1.0, enabled: true },
+        ],
       };
-      const up = (await invoke("render_filters_preview", { req })) as string;
+      const up = (await invoke("render_filters_chain_preview", { req })) as string;
       filtersSetPreview(up);
     } catch (err) {
       console.error(err);

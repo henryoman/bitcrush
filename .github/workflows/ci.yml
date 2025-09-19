@@ -1,0 +1,48 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install frontend deps
+        run: bun install --frozen-lockfile
+
+      - name: Frontend build (TypeScript + Vite)
+        run: bun run build
+
+      - name: Setup Rust toolchain (stable)
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache cargo build artifacts
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: |
+            src-tauri -> target
+
+      - name: Cargo build (debug)
+        working-directory: src-tauri
+        run: cargo build --locked
+
+      - name: Cargo check
+        working-directory: src-tauri
+        run: cargo check --locked
+
+      - name: Cargo clippy (deny warnings)
+        working-directory: src-tauri
+        run: cargo clippy --all-targets -- -D warnings
+
+
