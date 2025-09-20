@@ -7,6 +7,8 @@
 [![Built with Bun](https://img.shields.io/badge/bun-000000?style=flat-square&logo=bun&logoColor=white)](https://bun.sh/)
 [![Built with TypeScript](https://img.shields.io/badge/typescript-3178C6?style=flat-square&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 
+![Screenshot](/src/assets/bitcrush-screenshot.png)
+
 ## Introduction
 
 Bitcrush turns images into crisp pixel art with selectable palettes and algorithms. Version **0.1.0** coming soon.

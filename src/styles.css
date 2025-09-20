@@ -202,14 +202,14 @@ input[type="range"]::-moz-range-track {
 input[type="range"]::-webkit-slider-thumb {
   -webkit-appearance: none;
   appearance: none;
-  width: 18px; height: 18px;
+  width: 28px; height: 16px;
   background: #6a6a6a;
   border: 1px solid #2a2a2a;
   border-radius: 9999px;
-  margin-top: -5px; /* center thumb on 8px track */
+  margin-top: -4px; /* center thumb on 8px track */
 }
 input[type="range"]::-moz-range-thumb {
-  width: 18px; height: 18px;
+  width: 28px; height: 16px;
   background: #6a6a6a;
   border: 1px solid #2a2a2a;
   border-radius: 9999px;
