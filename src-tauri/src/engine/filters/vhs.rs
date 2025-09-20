@@ -25,13 +25,7 @@ fn grade(img: &mut RgbaImage) {
     }
 }
 
-fn soft_pixelate(img: &RgbaImage) -> RgbaImage {
-    let (w, h) = img.dimensions();
-    let tw = (w as f32 * 0.87) as u32;
-    let th = (h as f32 * 0.87) as u32;
-    let small = image::imageops::resize(img, tw.max(1), th.max(1), FilterType::Triangle);
-    image::imageops::resize(&small, w, h, FilterType::Nearest)
-}
+// removed soft_pixelate (superseded by prefilter_input_for_vhs)
 
 fn scanlines(img: &mut RgbaImage) {
     const DARKEN: f32 = 0.92;
@@ -52,19 +46,7 @@ fn scanlines(img: &mut RgbaImage) {
     }
 }
 
-fn chromatic_aberration(img: &RgbaImage) -> RgbaImage {
-    let (w, h) = img.dimensions();
-    let mut out = img.clone();
-    for y in 0..h {
-        for x in 0..w {
-            let src_r = img.get_pixel(x.saturating_sub(1), y).0;
-            let src_g = img.get_pixel(x, y).0;
-            let src_b = img.get_pixel((x + 1).min(w.saturating_sub(1)), y).0;
-            *out.get_pixel_mut(x, y) = Rgba([src_r[0], src_g[1], src_b[2], src_g[3]]);
-        }
-    }
-    out
-}
+// removed unused chromatic_aberration (superseded by chromatic_aberration_shift)
 
 fn chromatic_aberration_shift(img: &RgbaImage, shift: i32) -> RgbaImage {
     // shift > 0 moves red left and blue right by `shift` pixels
@@ -150,14 +132,70 @@ fn bloom(base: &RgbaImage) -> RgbaImage {
 }
 
 fn grain(img: &mut RgbaImage, amount: f32) {
+    // Scanline-correlated and blocky grain to avoid crisp high-frequency noise
+    // Typical VHS noise is horizontally smeared and not pixel-perfect.
     let mut rng = StdRng::seed_from_u64(0xDEAD_BEEF);
-    for p in img.pixels_mut() {
-        let [r, g, b, a] = p.0;
-        let mut n = |v: u8| -> u8 {
-            let delta: f32 = rng.gen_range(-amount..amount);
-            clamp_u8(v as f32 + delta)
-        };
-        *p = Rgba([n(r), n(g), n(b), a]);
+    let (w, h) = img.dimensions();
+    let block: u32 = (w / 160).max(2); // coarser blocks on larger images
+    for y in 0..h {
+        let row_bias: f32 = rng.gen_range(-amount..amount) * 0.4; // shared per-row component
+        let mut x: u32 = 0;
+        while x < w {
+            let bump: f32 = rng.gen_range(-amount..amount) + row_bias;
+            let x_end = (x + block).min(w);
+            for xx in x..x_end {
+                let p = img.get_pixel_mut(xx, y);
+                let [r, g, b, a] = p.0;
+                let nr = clamp_u8(r as f32 + bump);
+                let ng = clamp_u8(g as f32 + bump);
+                let nb = clamp_u8(b as f32 + bump);
+                *p = Rgba([nr, ng, nb, a]);
+            }
+            x = x_end;
+        }
+    }
+}
+
+pub fn prefilter_input_for_vhs(src: &RgbaImage) -> RgbaImage {
+    // Designed for sharp digital inputs: gently low-pass and lightly rasterize
+    // 1) Mild gaussian blur to remove high-frequency crispness
+    let blurred = image::imageops::blur(src, 0.6);
+    // 2) Slight down-up sampling to introduce analog softness
+    let (w, h) = blurred.dimensions();
+    let dw = ((w as f32) * 0.92).round().max(1.0) as u32;
+    let dh = ((h as f32) * 0.92).round().max(1.0) as u32;
+    let small = image::imageops::resize(&blurred, dw, dh, FilterType::Triangle);
+    image::imageops::resize(&small, w, h, FilterType::Nearest)
+}
+
+fn rasterize_lines(src: &RgbaImage, target_lines: u32) -> RgbaImage {
+    // Downsample vertically to a fixed number of lines (e.g., ~240 NTSC)
+    // then upscale using nearest to create authentic line structure.
+    let (w, h) = src.dimensions();
+    if target_lines == 0 || h <= target_lines { return src.clone(); }
+    let small = image::imageops::resize(src, w, target_lines, FilterType::Triangle);
+    image::imageops::resize(&small, w, h, FilterType::Nearest)
+}
+
+fn luma_dither(img: &mut RgbaImage, amplitude: f32) {
+    // Tiny correlated luma dither to break banding without looking like grain
+    let (w, h) = img.dimensions();
+    let mut rng = StdRng::seed_from_u64(0xA11A_D17Eu64);
+    for y in 0..h {
+        let row_n = rng.gen_range(-amplitude..amplitude) * 0.5; // row component
+        for x in 0..w {
+            // mild blue-noise-ish with blocky step every 3 px
+            let col_n = if x % 3 == 0 { rng.gen_range(-amplitude..amplitude) * 0.5 } else { 0.0 };
+            let p = img.get_pixel_mut(x, y);
+            let [r, g, b, a] = p.0;
+            let yv = 0.299 * r as f32 + 0.587 * g as f32 + 0.114 * b as f32;
+            let n = row_n + col_n;
+            let nr = clamp_u8(r as f32 + n);
+            let ng = clamp_u8(g as f32 + n);
+            let nb = clamp_u8(b as f32 + n);
+            let _ = yv; // keep calc to show intent; currently unused directly
+            *p = Rgba([nr, ng, nb, a]);
+        }
     }
 }
 
@@ -200,36 +238,47 @@ fn raster_jitter(src: &RgbaImage, period: u32, magnitude: i32) -> RgbaImage {
 // (removed legacy alias apply_vhs)
 
 pub fn apply_vhs1(src: &RgbaImage) -> RgbaImage {
-    let mut work = soft_pixelate(src);
+    // Authentic baseline: slight soften + chroma bleed + scanlines + subtle grain
+    let mut work = prefilter_input_for_vhs(src);
+    // Introduce mild color bleed
+    work = color_bleed_simple(&work, 1.2, 0.28);
     grade(&mut work);
-    work = chromatic_aberration(&work);
+    work = chromatic_aberration_shift(&work, 1);
+    // NTSC-like line rasterization (~240 lines for typical VHS)
+    work = rasterize_lines(&work, work.height().min(240).max(160));
     scanlines(&mut work);
     work = bloom(&work);
-    grain(&mut work, 3.5);
+    // Very low, coarse grain
+    grain(&mut work, 1.1);
+    luma_dither(&mut work, 0.8);
     vignette(&mut work);
     work
 }
 
 pub fn apply_vhs2(src: &RgbaImage) -> RgbaImage {
-    // Stronger CA and bloom, mild raster jitter
-    let mut work = soft_pixelate(src);
+    // Stronger CA and bloom, mild raster jitter, with authentic prefilter + raster
+    let mut work = prefilter_input_for_vhs(src);
+    work = color_bleed_simple(&work, 1.3, 0.32);
     grade(&mut work);
     work = chromatic_aberration_shift(&work, 2);
+    work = rasterize_lines(&work, 240);
     scanlines(&mut work);
     work = bloom(&work);
-    work = box_blur(&work, 1); // soften slightly
-    grain(&mut work, 5.0);
+    work = box_blur(&work, 1);
+    grain(&mut work, 1.6);
+    luma_dither(&mut work, 0.9);
     work = raster_jitter(&work, 6, 2);
     vignette(&mut work);
     work
 }
 
 pub fn apply_vhs3(src: &RgbaImage) -> RgbaImage {
-    // Heavier pixelation, more pronounced scanlines, stronger noise
-    let mut work = soft_pixelate(src);
+    // Heavier CA, darker scanlines, mild jitter; keep noise low and coarse
+    let mut work = prefilter_input_for_vhs(src);
+    work = color_bleed_simple(&work, 1.4, 0.36);
     grade(&mut work);
     work = chromatic_aberration_shift(&work, 3);
-    // darker scanlines
+    work = rasterize_lines(&work, 240);
     const DARKEN: f32 = 0.86;
     let (w, h) = work.dimensions();
     for y in 0..h { if y % 2 == 1 { for x in 0..w {
@@ -237,15 +286,15 @@ pub fn apply_vhs3(src: &RgbaImage) -> RgbaImage {
         *p = Rgba([clamp_u8((r as f32)*DARKEN),clamp_u8((g as f32)*DARKEN),clamp_u8((b as f32)*DARKEN),a]);
     }}}
     work = bloom(&work);
-    grain(&mut work, 8.0);
-    work = raster_jitter(&work, 4, 3);
+    grain(&mut work, 1.9);
+    luma_dither(&mut work, 1.0);
+    work = raster_jitter(&work, 5, 3);
     vignette(&mut work);
     work
 }
 
 pub fn apply_vhs_realistic(src: &RgbaImage) -> RgbaImage {
-    // Based on NTSC YUV characteristics: reduced horizontal chroma bandwidth,
-    // lowered saturation, slight analog softness.
+    // Based on NTSC YUV characteristics with added authentic rasterization
     let (w, h) = src.dimensions();
     let wu = w as usize;
     let hu = h as usize;
@@ -271,7 +320,7 @@ pub fn apply_vhs_realistic(src: &RgbaImage) -> RgbaImage {
         }
     }
     // Horizontal chroma smear (simulate low chroma bandwidth)
-    let radius: i32 = 3; // ~7px window
+    let radius: i32 = 4; // ~9px window for stronger chroma smear
     let mut u_s = vec![0.0f32; wu * hu];
     let mut v_s = vec![0.0f32; wu * hu];
     let norm = 1.0 / (2 * radius + 1) as f32;
@@ -291,7 +340,7 @@ pub fn apply_vhs_realistic(src: &RgbaImage) -> RgbaImage {
         }
     }
     // Desaturate and slight tint shift toward green
-    let sat = 0.65f32;
+    let sat = 0.60f32;
     for i in 0..u_s.len() {
         u_s[i] *= sat;
         v_s[i] *= sat * 0.96; // minute tint
@@ -316,9 +365,12 @@ pub fn apply_vhs_realistic(src: &RgbaImage) -> RgbaImage {
     }
     // Gentle CRT cues
     let mut out2 = out;
+    // Line rasterization first to avoid color banding appearing too crisp
+    out2 = rasterize_lines(&out2, 240);
     scanlines(&mut out2);
     out2 = box_blur(&out2, 1);
-    grain(&mut out2, 2.5);
+    grain(&mut out2, 1.4);
+    luma_dither(&mut out2, 0.8);
     vignette(&mut out2);
     out2
 }
@@ -396,6 +448,12 @@ pub fn apply_vhs_realistic3_mix2(src: &RgbaImage) -> RgbaImage {
     work
 }
 
+// Map older names to a clean set VHS 1..7 presets
+pub fn apply_vhs4(src: &RgbaImage) -> RgbaImage { apply_vhs_realistic(src) }
+pub fn apply_vhs5(src: &RgbaImage) -> RgbaImage { apply_vhs_realistic2(src) }
+pub fn apply_vhs6(src: &RgbaImage) -> RgbaImage { apply_vhs_realistic3(src) }
+pub fn apply_vhs7(src: &RgbaImage) -> RgbaImage { apply_vhs_realistic3_mix2(src) }
+
 
 // --- Extra helpers for mixes ---
 fn color_bleed_simple(src: &RgbaImage, sigma: f32, mix: f32) -> RgbaImage {
@@ -416,20 +474,7 @@ fn color_bleed_simple(src: &RgbaImage, sigma: f32, mix: f32) -> RgbaImage {
     out
 }
 
-fn unsharp_halos(src: &RgbaImage, radius: u32, amount: f32) -> RgbaImage {
-    let blurred = box_blur(src, radius);
-    let mut out = src.clone();
-    for (x, y, p) in out.enumerate_pixels_mut() {
-        let a = p.0[3];
-        let b = blurred.get_pixel(x, y).0;
-        let o = src.get_pixel(x, y).0;
-        let nr = ((o[0] as f32) + (o[0] as f32 - b[0] as f32) * amount).clamp(0.0, 255.0) as u8;
-        let ng = ((o[1] as f32) + (o[1] as f32 - b[1] as f32) * amount).clamp(0.0, 255.0) as u8;
-        let nb = ((o[2] as f32) + (o[2] as f32 - b[2] as f32) * amount).clamp(0.0, 255.0) as u8;
-        *p = Rgba([nr, ng, nb, a]);
-    }
-    out
-}
+// removed unsharp_halos (no longer used)
 
 fn stripe_noise(src: &RgbaImage, density: f32) -> RgbaImage {
     let (w, h) = src.dimensions();
@@ -457,37 +502,5 @@ fn stripe_noise(src: &RgbaImage, density: f32) -> RgbaImage {
 }
 
 // --- Mixes ---
-pub fn apply_vhs_mix1(src: &RgbaImage) -> RgbaImage {
-    // Stronger color bleed + mild halos, classic scanlines and grain
-    let mut work = color_bleed_simple(src, 1.6, 0.35);
-    work = unsharp_halos(&work, 1, 0.35);
-    scanlines(&mut work);
-    grain(&mut work, 4.0);
-    vignette(&mut work);
-    work
-}
-
-pub fn apply_vhs_mix2(src: &RgbaImage) -> RgbaImage {
-    // Bleed + tiny CA + rare stripe noise + jitter
-    let mut work = color_bleed_simple(src, 1.2, 0.28);
-    work = chromatic_aberration_shift(&work, 1);
-    work = stripe_noise(&work, 0.02);
-    work = raster_jitter(&work, 14, 1);
-    scanlines(&mut work);
-    grain(&mut work, 5.0);
-    vignette(&mut work);
-    work
-}
-
-pub fn apply_vhs_mix3(src: &RgbaImage) -> RgbaImage {
-    // Balanced: modest bleed, stronger halos, slight desat, subtle bloom
-    let mut work = color_bleed_simple(src, 1.0, 0.22);
-    work = unsharp_halos(&work, 1, 0.6);
-    adjust_saturation(&mut work, 0.95);
-    work = bloom(&work);
-    scanlines(&mut work);
-    grain(&mut work, 3.5);
-    vignette(&mut work);
-    work
-}
+// removed MIX1/2/3 in favor of VHS 4..7 presets
 

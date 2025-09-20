@@ -59,7 +59,9 @@ fn upscale_center_to(img: &RgbaImage, display_size: u32) -> RgbaImage {
 pub fn render_filters_preview_png(req: FilterChainRequest) -> Result<String, FilterError> {
     let img = decode_data_url_to_image(&req.image_data_url)?;
     // Performance: operate at a capped working size then upscale to display for speed
-    let base = img.to_rgba8();
+    let base0 = img.to_rgba8();
+    // Prefilter sharp digital inputs once to avoid unrealistic high-frequency noise in VHS
+    let base = vhs::prefilter_input_for_vhs(&base0);
     let (bw, bh) = (base.width(), base.height());
     let max_work = 640u32;
     let work = if bw.max(bh) > max_work {
@@ -71,21 +73,18 @@ pub fn render_filters_preview_png(req: FilterChainRequest) -> Result<String, Fil
         base
     };
     let mut frame = work;
-    // Router: VHS variants
+    // Router: VHS variants (VHS 1..7)
     for step in &req.steps {
         if !step.enabled { continue; }
         let name = step.name.to_ascii_uppercase();
         match name.as_str() {
-            "VHS" | "VHS 1" => { frame = vhs::apply_vhs1(&frame); }
+            "VHS 1" => { frame = vhs::apply_vhs1(&frame); }
             "VHS 2" => { frame = vhs::apply_vhs2(&frame); }
             "VHS 3" => { frame = vhs::apply_vhs3(&frame); }
-            "VHS REAL" | "VHS REALISTIC" => { frame = vhs::apply_vhs_realistic(&frame); }
-            "VHS REALISTIC 2" | "VHS REAL 2" | "VHS 5" => { frame = vhs::apply_vhs_realistic2(&frame); }
-            "VHS REALISTIC 3" | "VHS REAL 3" => { frame = vhs::apply_vhs_realistic3(&frame); }
-            "VHS R3+M2" | "VHS REALISTIC 3 MIX 2" | "VHS REAL 3 MIX 2" => { frame = vhs::apply_vhs_realistic3_mix2(&frame); }
-            "VHS MIX 1" | "VHS MIX1" => { frame = vhs::apply_vhs_mix1(&frame); }
-            "VHS MIX 2" | "VHS MIX2" => { frame = vhs::apply_vhs_mix2(&frame); }
-            "VHS MIX 3" | "VHS MIX3" => { frame = vhs::apply_vhs_mix3(&frame); }
+            "VHS 4" => { frame = vhs::apply_vhs4(&frame); }
+            "VHS 5" => { frame = vhs::apply_vhs5(&frame); }
+            "VHS 6" => { frame = vhs::apply_vhs6(&frame); }
+            "VHS 7" => { frame = vhs::apply_vhs7(&frame); }
             _ => {}
         }
     }
