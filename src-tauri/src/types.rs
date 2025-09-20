@@ -22,6 +22,12 @@ pub struct RenderRequest {
     /// Optional denoise sigma for Gaussian blur in source domain. Typical 0.0..2.5
     #[serde(default)]
     pub denoise_sigma: Option<f32>,
+    /// Optional pre-contrast applied to source before grid/pixelize (1.0 = no change)
+    #[serde(default)]
+    pub pre_contrast: Option<f32>,
+    /// Optional pre-saturation applied to source before grid/pixelize (1.0 = no change)
+    #[serde(default)]
+    pub pre_saturation: Option<f32>,
 }
 
 

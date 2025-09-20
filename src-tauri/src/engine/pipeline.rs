@@ -50,6 +50,35 @@ fn resize_to_grid(img: &DynamicImage, grid_w: u32, grid_h: u32) -> RgbaImage {
     img.resize_exact(grid_w, grid_h, FilterType::Nearest)
         .to_rgba8()
 }
+fn apply_pre_contrast_saturation(img: &DynamicImage, pre_contrast: Option<f32>, pre_saturation: Option<f32>) -> DynamicImage {
+    let mut rgba = img.to_rgba8();
+    let contrast = pre_contrast.unwrap_or(1.0);
+    let saturation = pre_saturation.unwrap_or(1.0);
+    if (contrast - 1.0).abs() < 0.001 && (saturation - 1.0).abs() < 0.001 {
+        return DynamicImage::ImageRgba8(rgba);
+    }
+    let c = (contrast).max(0.01);
+    let s = (saturation).max(0.0);
+    for p in rgba.pixels_mut() {
+        let [r, g, b, a] = p.0;
+        // Contrast around mid-point 128
+        let mut rf = (r as f32 - 128.0) * c + 128.0;
+        let mut gf = (g as f32 - 128.0) * c + 128.0;
+        let mut bf = (b as f32 - 128.0) * c + 128.0;
+        // Saturation in HSL-ish via luma blend
+        let y = 0.2126 * rf + 0.7152 * gf + 0.0722 * bf;
+        rf = y + (rf - y) * s;
+        gf = y + (gf - y) * s;
+        bf = y + (bf - y) * s;
+        *p = Rgba([
+            rf.clamp(0.0, 255.0) as u8,
+            gf.clamp(0.0, 255.0) as u8,
+            bf.clamp(0.0, 255.0) as u8,
+            a,
+        ]);
+    }
+    DynamicImage::ImageRgba8(rgba)
+}
 
 // (removed deprecated preprocess; denoise is now applied after grid resize)
 
@@ -103,22 +132,17 @@ fn resolve_grid(req: &RenderRequest) -> (u32, u32) {
 }
 
 fn upscale_center_to(img: &RgbaImage, display_size: u32) -> RgbaImage {
-    // Maintain integer scaling on both axes and center on a square canvas
+    // Maintain whole-integer scaling; return just the scaled image (top-left alignment in UI)
     let max_dim = display_size.max(1);
     let factor_w = (max_dim / img.width()).max(1);
     let factor_h = (max_dim / img.height()).max(1);
-    let factor = factor_w.min(factor_h);
-    let scaled = image::imageops::resize(
+    let factor = factor_w.min(factor_h).max(1);
+    image::imageops::resize(
         img,
         img.width() * factor,
         img.height() * factor,
         FilterType::Nearest,
-    );
-    let mut canvas: RgbaImage = ImageBuffer::from_pixel(max_dim, max_dim, Rgba([0, 0, 0, 0]));
-    let off_x = (max_dim - scaled.width()) / 2;
-    let off_y = (max_dim - scaled.height()) / 2;
-    image::imageops::overlay(&mut canvas, &scaled, off_x.into(), off_y.into());
-    canvas
+    )
 }
 
 fn encode_png_base64(img: &RgbaImage) -> Result<String, EngineError> {
@@ -131,7 +155,9 @@ fn encode_png_base64(img: &RgbaImage) -> Result<String, EngineError> {
 }
 
 pub fn render_preview_png(req: RenderRequest) -> Result<String, EngineError> {
-    let img = decode_data_url_to_image(&req.image_data_url)?;
+    let img0 = decode_data_url_to_image(&req.image_data_url)?;
+    // Preprocess in source domain
+    let img = apply_pre_contrast_saturation(&img0, req.pre_contrast, req.pre_saturation);
     let (gw, gh) = resolve_grid(&req);
     let mut grid = resize_to_grid(&img, gw, gh);
     grid = apply_denoise_rgba(grid, req.denoise_sigma);

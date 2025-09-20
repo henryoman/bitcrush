@@ -60,6 +60,10 @@ window.addEventListener("DOMContentLoaded", async () => {
   const toneLabel = qs<HTMLDivElement>("#toneLabel");
   const denoise = qs<HTMLInputElement>("#denoise");
   const denoiseLabel = qs<HTMLDivElement>("#denoiseLabel");
+  const preContrast = qs<HTMLInputElement>("#preContrast");
+  const preContrastLabel = qs<HTMLDivElement>("#preContrastLabel");
+  const preSaturation = qs<HTMLInputElement>("#preSaturation");
+  const preSaturationLabel = qs<HTMLDivElement>("#preSaturationLabel");
   const btnGen = qs<HTMLButtonElement>("#generate");
   const btnUpscaled = qs<HTMLButtonElement>("#download-upscaled");
   const btnBase = qs<HTMLButtonElement>("#download-base");
@@ -72,6 +76,7 @@ window.addEventListener("DOMContentLoaded", async () => {
   const fOutput = qs<HTMLImageElement>("#filters-output");
   const fOutputEmpty = qs<HTMLDivElement>("#filters-outputEmpty");
   const fBtnGen = qs<HTMLButtonElement>("#filters-generate");
+  const fKind = qs<HTMLSelectElement>("#filters-kind");
 
   let selectedImage: string | null = null;
   let upscaledDataURL: string | null = null;
@@ -90,7 +95,7 @@ window.addEventListener("DOMContentLoaded", async () => {
     } else {
       output.style.display = "none";
       output.src = "";
-      outputEmpty.style.display = "";
+      outputEmpty.style.display = "none";
     }
   }
 
@@ -98,14 +103,12 @@ window.addEventListener("DOMContentLoaded", async () => {
     if (!output || !outputEmpty) return;
     output.style.display = "none";
     output.src = "";
-    outputEmpty.style.display = "";
-    outputEmpty.textContent = `Error: ${message}`;
+    outputEmpty.style.display = "none";
   }
 
   function markDirty() {
     upscaledDataURL = null;
     baseDataURL = null;
-    if (outputEmpty) outputEmpty.textContent = "Press Pixelate to update preview";
     setPreview(null);
     updateButtons();
   }
@@ -123,10 +126,20 @@ window.addEventListener("DOMContentLoaded", async () => {
   function updateDenoiseLabel() {
     if (denoise && denoiseLabel) denoiseLabel.textContent = `Sigma: ${Number(denoise.value).toFixed(1)}`;
   }
+  function updatePreContrastLabel() {
+    if (preContrast && preContrastLabel) preContrastLabel.textContent = `Contrast: ${Number(preContrast.value).toFixed(2)}`;
+  }
+  function updatePreSaturationLabel() {
+    if (preSaturation && preSaturationLabel) preSaturationLabel.textContent = `Saturation: ${Number(preSaturation.value).toFixed(2)}`;
+  }
   updateToneLabel();
   updateDenoiseLabel();
+  updatePreContrastLabel();
+  updatePreSaturationLabel();
   tone?.addEventListener("input", updateToneLabel);
   denoise?.addEventListener("input", updateDenoiseLabel);
+  preContrast?.addEventListener("input", updatePreContrastLabel);
+  preSaturation?.addEventListener("input", updatePreSaturationLabel);
 
   async function renderNow() {
     if (!selectedImage || !algoSel || !gridSel || !paletteSel) return;
@@ -142,8 +155,11 @@ window.addEventListener("DOMContentLoaded", async () => {
         grid_value: val,
         algorithm: algoSel.value,
         palette_name: paletteSel.value,
+        display_size: 800,
         tone_gamma: tone ? Number(tone.value) : undefined,
         denoise_sigma: denoise ? Number(denoise.value) : undefined,
+        pre_contrast: preContrast ? Number(preContrast.value) : undefined,
+        pre_saturation: preSaturation ? Number(preSaturation.value) : undefined,
       };
       const up = (await invoke("render_preview", { req })) as string;
       if (mySeq !== renderCounter) return; // stale
@@ -257,7 +273,7 @@ window.addEventListener("DOMContentLoaded", async () => {
     } else {
       fOutput.style.display = "none";
       fOutput.src = "";
-      fOutputEmpty.style.display = "";
+      fOutputEmpty.style.display = "none";
     }
   }
 
@@ -265,8 +281,7 @@ window.addEventListener("DOMContentLoaded", async () => {
     if (!fOutput || !fOutputEmpty) return;
     fOutput.style.display = "none";
     fOutput.src = "";
-    fOutputEmpty.style.display = "";
-    fOutputEmpty.textContent = `Error: ${message}`;
+    fOutputEmpty.style.display = "none";
   }
 
   function filtersHandleFile(file: File) {
@@ -286,18 +301,13 @@ window.addEventListener("DOMContentLoaded", async () => {
   async function renderFiltersNow() {
     if (!filtersImage) return;
     try {
+      const kind = (fKind?.value || "VHS").trim();
       const req = {
         image_data_url: filtersImage,
-        grid_width: 0,
-        grid_height: 0,
-        grid_value: undefined as unknown as string | undefined,
-        algorithm: "Standard",
-        palette_name: undefined as unknown as string | undefined,
-        display_size: 560,
-        tone_gamma: undefined as unknown as number | undefined,
-        denoise_sigma: undefined as unknown as number | undefined,
+        display_size: 800,
+        steps: [{ name: kind, amount: 1.0, enabled: true }],
       };
-      const up = (await invoke("render_filters_preview", { req })) as string;
+      const up = (await invoke("render_filters_chain_preview", { req })) as string;
       filtersSetPreview(up);
     } catch (err) {
       console.error(err);

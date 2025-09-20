@@ -2,9 +2,9 @@
 
 @theme {
   /* Colors */
-  --color-background: #090909;
-  --color-surface: #0f1114;
-  --color-border: #1a1c21;
+  --color-background: #0a0a0a; /* neutral deep gray */
+  --color-surface: #0f0f0f;    /* neutral panel gray (no blue tint) */
+  --color-border: #1a1a1a;     /* neutral border gray */
   --color-primary: #0f439d; /* glow-bitcrush */
   --color-secondary: #9aa0a6;
   --color-error: #d2463e;
@@ -67,12 +67,12 @@ h1 {
   text-align: center;
 }
 
-/* Keep sharp corners */
+/* Soft, rounded UI */
 button,
 input,
 select,
 textarea {
-  border-radius: 0;
+  border-radius: 9999px;
 }
 
 /* (removed obsolete greet styles) */
@@ -140,10 +140,10 @@ body.terminal {
   text-decoration: underline;
 }
 
-/* Ensure sharp corners */
+/* Very rounded buttons */
 .btn,
 .btn-primary,
-button { border-radius: 0; }
+button { border-radius: 9999px; }
 
 /* Gentle retro-ish typography scale and safe wrapping */
 body, .container, .card, .form-control, label, select, button, input, textarea {
@@ -156,8 +156,63 @@ label {
   font-size: 0.85rem;
 }
 
+/* Indent and space labels slightly so they align visually with rounded inputs */
+.controls label,
+[data-route="filters"] label {
+  display: block;
+  margin-left: 6px;   /* subtle indent to match rounded control padding */
+  margin-bottom: 6px; /* breathing room above selects/inputs */
+}
+
+/* Comfortable padding inside selects; matches pill look */
+.controls select,
+[data-route="filters"] select {
+  padding-left: 10px;
+  padding-right: 10px;
+  height: 36px;
+  border-radius: 12px;
+}
+
 select, input, button {
   font-size: 0.85rem;
+}
+
+/* Dark, minimal sliders */
+input[type="range"] {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 8px;
+  background: #1a1a1a;
+  outline: none;
+  border-radius: 9999px;
+}
+/* WebKit track */
+input[type="range"]::-webkit-slider-runnable-track {
+  height: 8px;
+  background: #1a1a1a;
+  border-radius: 9999px;
+}
+/* Firefox track */
+input[type="range"]::-moz-range-track {
+  height: 8px;
+  background: #1a1a1a;
+  border-radius: 9999px;
+}
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 18px; height: 18px;
+  background: #6a6a6a;
+  border: 1px solid #2a2a2a;
+  border-radius: 9999px;
+  margin-top: -5px; /* center thumb on 8px track */
+}
+input[type="range"]::-moz-range-thumb {
+  width: 18px; height: 18px;
+  background: #6a6a6a;
+  border: 1px solid #2a2a2a;
+  border-radius: 9999px;
 }
 
 .text-secondary { color: var(--color-secondary); }
@@ -169,8 +224,12 @@ select, input, button {
 .controls .card { margin-bottom: 12px; }
 .preview .card { margin-bottom: 12px; }
 
+/* Add subtle spacing between stacked control panels */
+.controls > div { margin-bottom: 8px; }
+.controls > div:last-child { margin-bottom: 0; }
+
 /* Cards and panels */
-.card { @apply bg-[var(--color-surface)] border border-[var(--color-border)]; }
+.card { @apply bg-[var(--color-surface)] border border-[var(--color-border)] rounded-[16px]; }
 .padded { @apply p-3; }
 .form-control { @apply w-full; }
 .actions { @apply flex gap-2 flex-wrap; }
