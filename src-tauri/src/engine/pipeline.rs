@@ -1,5 +1,6 @@
 use crate::types::RenderRequest;
 use image::{imageops::FilterType, DynamicImage, ImageFormat, Rgba, RgbaImage};
+use std::f32::consts::PI;
 use std::io::Cursor;
 use thiserror::Error;
 
@@ -50,26 +51,77 @@ fn resize_to_grid(img: &DynamicImage, grid_w: u32, grid_h: u32) -> RgbaImage {
     img.resize_exact(grid_w, grid_h, FilterType::Nearest)
         .to_rgba8()
 }
-fn apply_pre_contrast_saturation(img: &DynamicImage, pre_contrast: Option<f32>, pre_saturation: Option<f32>) -> DynamicImage {
+fn apply_pre_color_adjustments(
+    img: &DynamicImage,
+    pre_contrast: Option<f32>,
+    pre_saturation: Option<f32>,
+    pre_hue_degrees: Option<f32>,
+) -> DynamicImage {
     let mut rgba = img.to_rgba8();
     let contrast = pre_contrast.unwrap_or(1.0);
     let saturation = pre_saturation.unwrap_or(1.0);
-    if (contrast - 1.0).abs() < 0.001 && (saturation - 1.0).abs() < 0.001 {
+    let hue_deg = pre_hue_degrees.unwrap_or(0.0);
+
+    let needs_contrast = (contrast - 1.0).abs() > 0.001;
+    let needs_saturation = (saturation - 1.0).abs() > 0.001;
+    let needs_hue = hue_deg.abs() > 0.001;
+    if !needs_contrast && !needs_saturation && !needs_hue {
         return DynamicImage::ImageRgba8(rgba);
     }
+
     let c = (contrast).max(0.01);
     let s = (saturation).max(0.0);
+
+    // Prepare hue rotation matrix around the gray axis in RGB space
+    let (cos_a, sin_a) = {
+        let a = (hue_deg.rem_euclid(360.0)) * (PI / 180.0);
+        (a.cos(), a.sin())
+    };
+    // Constants for luma-preserving hue rotation
+    let lum_r = 0.213_f32;
+    let lum_g = 0.715_f32;
+    let lum_b = 0.072_f32;
+    let one_minus_lum_r = 1.0 - lum_r; // 0.787
+    let one_minus_lum_g = 1.0 - lum_g; // 0.285
+    let one_minus_lum_b = 1.0 - lum_b; // 0.928
+
+    // 3x3 rotation matrix derived from Adobe/GLSL hue rotation
+    let m00 = lum_r + cos_a * one_minus_lum_r - sin_a * lum_r;
+    let m01 = lum_g - cos_a * lum_g - sin_a * lum_g;
+    let m02 = lum_b - cos_a * lum_b + sin_a * one_minus_lum_b;
+
+    let m10 = lum_r - cos_a * lum_r + sin_a * 0.143_f32;
+    let m11 = lum_g + cos_a * one_minus_lum_g + sin_a * 0.140_f32;
+    let m12 = lum_b - cos_a * lum_b - sin_a * 0.283_f32;
+
+    let m20 = lum_r - cos_a * lum_r - sin_a * one_minus_lum_r;
+    let m21 = lum_g - cos_a * lum_g + sin_a * lum_g;
+    let m22 = lum_b + cos_a * one_minus_lum_b + sin_a * lum_b;
+
     for p in rgba.pixels_mut() {
         let [r, g, b, a] = p.0;
-        // Contrast around mid-point 128
-        let mut rf = (r as f32 - 128.0) * c + 128.0;
-        let mut gf = (g as f32 - 128.0) * c + 128.0;
-        let mut bf = (b as f32 - 128.0) * c + 128.0;
-        // Saturation in HSL-ish via luma blend
-        let y = 0.2126 * rf + 0.7152 * gf + 0.0722 * bf;
-        rf = y + (rf - y) * s;
-        gf = y + (gf - y) * s;
-        bf = y + (bf - y) * s;
+        let mut rf = r as f32;
+        let mut gf = g as f32;
+        let mut bf = b as f32;
+
+        if needs_contrast {
+            rf = (rf - 128.0) * c + 128.0;
+            gf = (gf - 128.0) * c + 128.0;
+            bf = (bf - 128.0) * c + 128.0;
+        }
+        if needs_saturation {
+            let y = 0.2126 * rf + 0.7152 * gf + 0.0722 * bf;
+            rf = y + (rf - y) * s;
+            gf = y + (gf - y) * s;
+            bf = y + (bf - y) * s;
+        }
+        if needs_hue {
+            let nr = m00 * rf + m01 * gf + m02 * bf;
+            let ng = m10 * rf + m11 * gf + m12 * bf;
+            let nb = m20 * rf + m21 * gf + m22 * bf;
+            rf = nr; gf = ng; bf = nb;
+        }
+
         *p = Rgba([
             rf.clamp(0.0, 255.0) as u8,
             gf.clamp(0.0, 255.0) as u8,
@@ -132,17 +184,22 @@ fn resolve_grid(req: &RenderRequest) -> (u32, u32) {
 }
 
 fn upscale_center_to(img: &RgbaImage, display_size: u32) -> RgbaImage {
-    // Maintain whole-integer scaling; return just the scaled image (top-left alignment in UI)
+    // Whole-integer up when possible; if the image already exceeds the target,
+    // downscale proportionally to fit within display_size.
     let max_dim = display_size.max(1);
-    let factor_w = (max_dim / img.width()).max(1);
-    let factor_h = (max_dim / img.height()).max(1);
-    let factor = factor_w.min(factor_h).max(1);
-    image::imageops::resize(
-        img,
-        img.width() * factor,
-        img.height() * factor,
-        FilterType::Nearest,
-    )
+    let (w, h) = (img.width(), img.height());
+    let (target_w, target_h) = if w <= max_dim && h <= max_dim {
+        let factor_w = (max_dim / w).max(1);
+        let factor_h = (max_dim / h).max(1);
+        let factor = factor_w.min(factor_h).max(1);
+        (w * factor, h * factor)
+    } else {
+        let scale = (max_dim as f32 / w as f32).min(max_dim as f32 / h as f32);
+        let tw = (w as f32 * scale).floor().max(1.0) as u32;
+        let th = (h as f32 * scale).floor().max(1.0) as u32;
+        (tw, th)
+    };
+    image::imageops::resize(img, target_w, target_h, FilterType::Nearest)
 }
 
 fn encode_png_base64(img: &RgbaImage) -> Result<String, EngineError> {
@@ -156,8 +213,8 @@ fn encode_png_base64(img: &RgbaImage) -> Result<String, EngineError> {
 
 pub fn render_preview_png(req: RenderRequest) -> Result<String, EngineError> {
     let img0 = decode_data_url_to_image(&req.image_data_url)?;
-    // Preprocess in source domain
-    let img = apply_pre_contrast_saturation(&img0, req.pre_contrast, req.pre_saturation);
+    // Preprocess in source domain (contrast, saturation, hue)
+    let img = apply_pre_color_adjustments(&img0, req.pre_contrast, req.pre_saturation, req.pre_hue_degrees);
     let (gw, gh) = resolve_grid(&req);
     let mut grid = resize_to_grid(&img, gw, gh);
     grid = apply_denoise_rgba(grid, req.denoise_sigma);
@@ -191,7 +248,8 @@ pub fn render_preview_png(req: RenderRequest) -> Result<String, EngineError> {
 }
 
 pub fn render_base_png(req: RenderRequest) -> Result<String, EngineError> {
-    let img = decode_data_url_to_image(&req.image_data_url)?;
+    let img0 = decode_data_url_to_image(&req.image_data_url)?;
+    let img = apply_pre_color_adjustments(&img0, req.pre_contrast, req.pre_saturation, req.pre_hue_degrees);
     let (gw, gh) = resolve_grid(&req);
     let mut grid = resize_to_grid(&img, gw, gh);
     grid = apply_denoise_rgba(grid, req.denoise_sigma);
@@ -227,7 +285,8 @@ pub fn render_preview_png_with_palette(
     req: RenderRequest,
     palette_colors: Vec<[u8; 3]>,
 ) -> Result<String, EngineError> {
-    let img = decode_data_url_to_image(&req.image_data_url)?;
+    let img0 = decode_data_url_to_image(&req.image_data_url)?;
+    let img = apply_pre_color_adjustments(&img0, req.pre_contrast, req.pre_saturation, req.pre_hue_degrees);
     let (gw, gh) = resolve_grid(&req);
     let mut grid = resize_to_grid(&img, gw, gh);
     grid = apply_denoise_rgba(grid, req.denoise_sigma);
@@ -262,7 +321,8 @@ pub fn render_base_png_with_palette(
     req: RenderRequest,
     palette_colors: Vec<[u8; 3]>,
 ) -> Result<String, EngineError> {
-    let img = decode_data_url_to_image(&req.image_data_url)?;
+    let img0 = decode_data_url_to_image(&req.image_data_url)?;
+    let img = apply_pre_color_adjustments(&img0, req.pre_contrast, req.pre_saturation, req.pre_hue_degrees);
     let (gw, gh) = resolve_grid(&req);
     let mut grid = resize_to_grid(&img, gw, gh);
     grid = apply_denoise_rgba(grid, req.denoise_sigma);

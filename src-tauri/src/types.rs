@@ -28,6 +28,9 @@ pub struct RenderRequest {
     /// Optional pre-saturation applied to source before grid/pixelize (1.0 = no change)
     #[serde(default)]
     pub pre_saturation: Option<f32>,
+    /// Optional pre-hue shift in degrees applied to source before grid/pixelize (0.0 = no change)
+    #[serde(default)]
+    pub pre_hue_degrees: Option<f32>,
 }
 
 

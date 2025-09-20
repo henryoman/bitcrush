@@ -64,6 +64,8 @@ window.addEventListener("DOMContentLoaded", async () => {
   const preContrastLabel = qs<HTMLDivElement>("#preContrastLabel");
   const preSaturation = qs<HTMLInputElement>("#preSaturation");
   const preSaturationLabel = qs<HTMLDivElement>("#preSaturationLabel");
+  const preHue = qs<HTMLInputElement>("#preHue");
+  const preHueLabel = qs<HTMLDivElement>("#preHueLabel");
   const btnGen = qs<HTMLButtonElement>("#generate");
   const btnUpscaled = qs<HTMLButtonElement>("#download-upscaled");
   const btnBase = qs<HTMLButtonElement>("#download-base");
@@ -132,14 +134,19 @@ window.addEventListener("DOMContentLoaded", async () => {
   function updatePreSaturationLabel() {
     if (preSaturation && preSaturationLabel) preSaturationLabel.textContent = `Saturation: ${Number(preSaturation.value).toFixed(2)}`;
   }
+  function updatePreHueLabel() {
+    if (preHue && preHueLabel) preHueLabel.textContent = `Hue: ${Number(preHue.value).toFixed(0)}°`;
+  }
   updateToneLabel();
   updateDenoiseLabel();
   updatePreContrastLabel();
   updatePreSaturationLabel();
+  updatePreHueLabel();
   tone?.addEventListener("input", updateToneLabel);
   denoise?.addEventListener("input", updateDenoiseLabel);
   preContrast?.addEventListener("input", updatePreContrastLabel);
   preSaturation?.addEventListener("input", updatePreSaturationLabel);
+  preHue?.addEventListener("input", updatePreHueLabel);
 
   async function renderNow() {
     if (!selectedImage || !algoSel || !gridSel || !paletteSel) return;
@@ -160,6 +167,7 @@ window.addEventListener("DOMContentLoaded", async () => {
         denoise_sigma: denoise ? Number(denoise.value) : undefined,
         pre_contrast: preContrast ? Number(preContrast.value) : undefined,
         pre_saturation: preSaturation ? Number(preSaturation.value) : undefined,
+        pre_hue_degrees: preHue ? Number(preHue.value) : undefined,
       };
       const up = (await invoke("render_preview", { req })) as string;
       if (mySeq !== renderCounter) return; // stale
@@ -218,10 +226,31 @@ window.addEventListener("DOMContentLoaded", async () => {
     const el = e.currentTarget as HTMLButtonElement;
     el.classList.add("is-pressed");
     setTimeout(() => el.classList.remove("is-pressed"), 90);
-    if (upscaledDataURL) {
-      downloadDataURL(upscaledDataURL, "bitcrush-upscaled.png");
-      flashDownload(el);
-    }
+    (async () => {
+      try {
+        if (!selectedImage || !algoSel || !gridSel || !paletteSel) return;
+        const val = gridSel.value.trim();
+        const req = {
+          image_data_url: selectedImage,
+          grid_width: 0,
+          grid_height: 0,
+          grid_value: val,
+          algorithm: algoSel.value,
+          palette_name: paletteSel.value,
+          display_size: 2000,
+          tone_gamma: tone ? Number(tone.value) : undefined,
+          denoise_sigma: denoise ? Number(denoise.value) : undefined,
+          pre_contrast: preContrast ? Number(preContrast.value) : undefined,
+          pre_saturation: preSaturation ? Number(preSaturation.value) : undefined,
+          pre_hue_degrees: preHue ? Number(preHue.value) : undefined,
+        };
+        const hi = (await invoke("render_preview", { req })) as string;
+        downloadDataURL(hi, "bitcrush-preview-2000.png");
+        flashDownload(el);
+      } catch (err) {
+        console.error(err);
+      }
+    })();
   });
   btnBase?.addEventListener("click", (e) => {
     const el = e.currentTarget as HTMLButtonElement;
@@ -241,6 +270,9 @@ window.addEventListener("DOMContentLoaded", async () => {
             palette_name: paletteSel?.value || undefined,
             tone_gamma: tone ? Number(tone.value) : undefined,
             denoise_sigma: denoise ? Number(denoise.value) : undefined,
+            pre_contrast: preContrast ? Number(preContrast.value) : undefined,
+            pre_saturation: preSaturation ? Number(preSaturation.value) : undefined,
+            pre_hue_degrees: preHue ? Number(preHue.value) : undefined,
           };
           baseDataURL = (await invoke("render_base", { req })) as string;
         }

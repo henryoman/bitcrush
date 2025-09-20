@@ -220,7 +220,7 @@ input[type="range"]::-moz-range-thumb {
 /* Simple two-column structure for wider screens */
 .page { max-width: none; margin: 0 auto; }
 .layout { display: grid; grid-template-columns: 1fr; gap: 12px; padding: 12px; }
-@media (min-width: 960px) { .layout { grid-template-columns: 420px 1fr; align-items: start; } }
+@media (min-width: 960px) { .layout { grid-template-columns: 520px 1fr; align-items: start; } }
 .controls .card { margin-bottom: 12px; }
 .preview .card { margin-bottom: 12px; }
 

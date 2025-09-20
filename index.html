@@ -21,9 +21,9 @@
         </nav>
       </div>
 
-      <section data-route="pixelizer" class="grid grid-cols-1 gap-3 p-3 md:[grid-template-columns:420px_1fr] items-stretch">
-        <div class="controls">
-          <div class="bg-[var(--color-surface)] border border-[var(--color-border)] p-3 rounded-[16px]">
+      <section data-route="pixelizer" class="grid grid-cols-1 gap-3 p-3 md:[grid-template-columns:520px_1fr] items-stretch">
+        <div class="controls grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div class="bg-[var(--color-surface)] border border-[var(--color-border)] p-3 rounded-[16px] md:col-span-2">
             <label>Source Image</label>
             <div id="dropzone" class="bg-[var(--color-surface)] border border-[var(--color-border)] p-3 cursor-pointer rounded-[12px]">
               <img id="thumb" alt="Selected" style="display:none;width:80px;height:80px;object-fit:cover" />
@@ -78,6 +78,11 @@
           </div>
 
           <div class="bg-[var(--color-surface)] border border-[var(--color-border)] p-3 rounded-[16px]">
+            <label id="preHueLabel" class="text-[var(--color-secondary)]">Hue: 0°</label>
+            <input id="preHue" type="range" min="-180" max="180" step="1" value="0" class="w-full" />
+          </div>
+
+          <div class="bg-[var(--color-surface)] border border-[var(--color-border)] p-3 rounded-[16px]">
             <label id="denoiseLabel" class="text-[var(--color-secondary)]">Sigma: 0.0</label>
             <input id="denoise" type="range" min="0" max="3" step="0.1" value="0" class="w-full" />
           </div>
@@ -122,7 +127,7 @@
       </section>
 
       <section data-route="filters" class="p-3" style="display:none">
-        <div class="grid grid-cols-1 gap-3 md:[grid-template-columns:420px_1fr] items-stretch">
+        <div class="grid grid-cols-1 gap-3 md:[grid-template-columns:520px_1fr] items-stretch">
           <div class="bg-[var(--color-surface)] border border-[var(--color-border)] p-3 rounded-[16px]">
             <label>Source Image</label>
             <div id="filters-dropzone" class="bg-[var(--color-surface)] border border-[var(--color-border)] p-3 cursor-pointer rounded-[12px]">
