@@ -1,5 +1,5 @@
 use crate::types::FilterChainRequest;
-use image::{imageops::FilterType, DynamicImage, ImageFormat, Rgba, RgbaImage};
+use image::{imageops::FilterType, DynamicImage, ImageFormat, RgbaImage};
 use std::io::Cursor;
 use thiserror::Error;
 
@@ -71,13 +71,23 @@ pub fn render_filters_preview_png(req: FilterChainRequest) -> Result<String, Fil
         base
     };
     let mut frame = work;
-    // Router: if any enabled step named "VHS", run the VHS pipeline. Otherwise passthrough
-    let use_vhs = req
-        .steps
-        .iter()
-        .any(|s| s.enabled && s.name.eq_ignore_ascii_case("VHS"));
-    if use_vhs {
-        frame = vhs::apply_vhs(&frame);
+    // Router: VHS variants
+    for step in &req.steps {
+        if !step.enabled { continue; }
+        let name = step.name.to_ascii_uppercase();
+        match name.as_str() {
+            "VHS" | "VHS 1" => { frame = vhs::apply_vhs1(&frame); }
+            "VHS 2" => { frame = vhs::apply_vhs2(&frame); }
+            "VHS 3" => { frame = vhs::apply_vhs3(&frame); }
+            "VHS REAL" | "VHS REALISTIC" => { frame = vhs::apply_vhs_realistic(&frame); }
+            "VHS REALISTIC 2" | "VHS REAL 2" | "VHS 5" => { frame = vhs::apply_vhs_realistic2(&frame); }
+            "VHS REALISTIC 3" | "VHS REAL 3" => { frame = vhs::apply_vhs_realistic3(&frame); }
+            "VHS R3+M2" | "VHS REALISTIC 3 MIX 2" | "VHS REAL 3 MIX 2" => { frame = vhs::apply_vhs_realistic3_mix2(&frame); }
+            "VHS MIX 1" | "VHS MIX1" => { frame = vhs::apply_vhs_mix1(&frame); }
+            "VHS MIX 2" | "VHS MIX2" => { frame = vhs::apply_vhs_mix2(&frame); }
+            "VHS MIX 3" | "VHS MIX3" => { frame = vhs::apply_vhs_mix3(&frame); }
+            _ => {}
+        }
     }
     let target = req.display_size.unwrap_or(560);
     let up = upscale_center_to(&frame, target);

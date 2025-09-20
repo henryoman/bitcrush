@@ -1,5 +1,5 @@
 use crate::types::RenderRequest;
-use image::{imageops::FilterType, DynamicImage, ImageBuffer, ImageFormat, Rgba, RgbaImage};
+use image::{imageops::FilterType, DynamicImage, ImageFormat, Rgba, RgbaImage};
 use std::io::Cursor;
 use thiserror::Error;
 

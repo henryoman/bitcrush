@@ -99,7 +99,7 @@ window.addEventListener("DOMContentLoaded", async () => {
     }
   }
 
-  function showError(message: string) {
+  function showError(_message: string) {
     if (!output || !outputEmpty) return;
     output.style.display = "none";
     output.src = "";
@@ -277,7 +277,7 @@ window.addEventListener("DOMContentLoaded", async () => {
     }
   }
 
-  function filtersShowError(message: string) {
+  function filtersShowError(_message: string) {
     if (!fOutput || !fOutputEmpty) return;
     fOutput.style.display = "none";
     fOutput.src = "";
