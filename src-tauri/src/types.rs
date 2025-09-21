@@ -31,6 +31,16 @@ pub struct RenderRequest {
     /// Optional pre-hue shift in degrees applied to source before grid/pixelize (0.0 = no change)
     #[serde(default)]
     pub pre_hue_degrees: Option<f32>,
+    /// Optional invert and night vision prefilter
+    #[serde(default)]
+    pub invert_colors: Option<bool>,
+    #[serde(default)]
+    pub night_vision_prefilter: Option<bool>,
+    /// Palette augmentation flags (affect render only; not persisted)
+    #[serde(default)]
+    pub add_black_to_palette: Option<bool>,
+    #[serde(default)]
+    pub add_white_to_palette: Option<bool>,
 }
 
 

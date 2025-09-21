@@ -132,6 +132,30 @@ fn apply_pre_color_adjustments(
     DynamicImage::ImageRgba8(rgba)
 }
 
+fn apply_night_vision_prefilter(img: &DynamicImage, enabled: bool) -> DynamicImage {
+    if !enabled { return img.clone(); }
+    // Convert to luma, boost green channel, suppress red/blue; mild blur
+    let mut rgba = img.to_rgba8();
+    for p in rgba.pixels_mut() {
+        let [r, g, b, a] = p.0;
+        let y = 0.299 * r as f32 + 0.587 * g as f32 + 0.114 * b as f32;
+        let ng = (y * 1.25).clamp(0.0, 255.0) as u8;
+        *p = Rgba([0, ng, 0, a]);
+    }
+    let blurred = image::imageops::blur(&rgba, 0.6);
+    DynamicImage::ImageRgba8(blurred)
+}
+
+fn apply_invert_prefilter(img: &DynamicImage, enabled: bool) -> DynamicImage {
+    if !enabled { return img.clone(); }
+    let mut rgba = img.to_rgba8();
+    for p in rgba.pixels_mut() {
+        let [r, g, b, a] = p.0;
+        *p = Rgba([255 - r, 255 - g, 255 - b, a]);
+    }
+    DynamicImage::ImageRgba8(rgba)
+}
+
 // (removed deprecated preprocess; denoise is now applied after grid resize)
 
 fn apply_tone_gamma(img: &mut RgbaImage, tone_gamma: Option<f32>) {
@@ -211,10 +235,26 @@ fn encode_png_base64(img: &RgbaImage) -> Result<String, EngineError> {
     Ok(format!("data:image/png;base64,{}", b64))
 }
 
+fn maybe_modify_palette(colors: &mut Vec<[u8; 3]>, add_black: bool, add_white: bool) {
+    // Do not persist; only mutate the working copy used by the renderer
+    if add_black {
+        if !colors.iter().any(|c| *c == [0, 0, 0]) {
+            colors.push([0, 0, 0]);
+        }
+    }
+    if add_white {
+        if !colors.iter().any(|c| *c == [255, 255, 255]) {
+            colors.push([255, 255, 255]);
+        }
+    }
+}
+
 pub fn render_preview_png(req: RenderRequest) -> Result<String, EngineError> {
     let img0 = decode_data_url_to_image(&req.image_data_url)?;
-    // Preprocess in source domain (contrast, saturation, hue)
-    let img = apply_pre_color_adjustments(&img0, req.pre_contrast, req.pre_saturation, req.pre_hue_degrees);
+    // Optional prefilters: invert then night vision, then color pre-adjust
+    let inv = apply_invert_prefilter(&img0, req.invert_colors.unwrap_or(false));
+    let night = apply_night_vision_prefilter(&inv, req.night_vision_prefilter.unwrap_or(false));
+    let img = apply_pre_color_adjustments(&night, req.pre_contrast, req.pre_saturation, req.pre_hue_degrees);
     let (gw, gh) = resolve_grid(&req);
     let mut grid = resize_to_grid(&img, gw, gh);
     grid = apply_denoise_rgba(grid, req.denoise_sigma);
@@ -222,7 +262,12 @@ pub fn render_preview_png(req: RenderRequest) -> Result<String, EngineError> {
     let algo = get_algorithm_by_name(req.algorithm.as_str());
     let palette_name = req.palette_name.as_deref().unwrap_or("Flying Tiger");
     let palette = get_palette_by_name(palette_name);
-    let pal_slice: Vec<[u8; 3]> = palette.colors.clone();
+    let mut pal_slice: Vec<[u8; 3]> = palette.colors.clone();
+    let add_black = req.add_black_to_palette.unwrap_or(false);
+    let add_white = req.add_white_to_palette.unwrap_or(false);
+    if add_black || add_white {
+        maybe_modify_palette(&mut pal_slice, add_black, add_white);
+    }
     match req.algorithm.as_str() {
         "Floyd-Steinberg" | "Floyd–Steinberg" => FloydSteinberg.process(&mut grid, &pal_slice),
         "Bayer" => Bayer.process(&mut grid, &pal_slice),
@@ -249,7 +294,9 @@ pub fn render_preview_png(req: RenderRequest) -> Result<String, EngineError> {
 
 pub fn render_base_png(req: RenderRequest) -> Result<String, EngineError> {
     let img0 = decode_data_url_to_image(&req.image_data_url)?;
-    let img = apply_pre_color_adjustments(&img0, req.pre_contrast, req.pre_saturation, req.pre_hue_degrees);
+    let inv = apply_invert_prefilter(&img0, req.invert_colors.unwrap_or(false));
+    let night = apply_night_vision_prefilter(&inv, req.night_vision_prefilter.unwrap_or(false));
+    let img = apply_pre_color_adjustments(&night, req.pre_contrast, req.pre_saturation, req.pre_hue_degrees);
     let (gw, gh) = resolve_grid(&req);
     let mut grid = resize_to_grid(&img, gw, gh);
     grid = apply_denoise_rgba(grid, req.denoise_sigma);
@@ -257,7 +304,12 @@ pub fn render_base_png(req: RenderRequest) -> Result<String, EngineError> {
     let algo = get_algorithm_by_name(req.algorithm.as_str());
     let palette_name = req.palette_name.as_deref().unwrap_or("Flying Tiger");
     let palette = get_palette_by_name(palette_name);
-    let pal_slice: Vec<[u8; 3]> = palette.colors.clone();
+    let mut pal_slice: Vec<[u8; 3]> = palette.colors.clone();
+    let add_black = req.add_black_to_palette.unwrap_or(false);
+    let add_white = req.add_white_to_palette.unwrap_or(false);
+    if add_black || add_white {
+        maybe_modify_palette(&mut pal_slice, add_black, add_white);
+    }
     match req.algorithm.as_str() {
         "Floyd-Steinberg" | "Floyd–Steinberg" => FloydSteinberg.process(&mut grid, &pal_slice),
         "Bayer" => Bayer.process(&mut grid, &pal_slice),
@@ -286,13 +338,20 @@ pub fn render_preview_png_with_palette(
     palette_colors: Vec<[u8; 3]>,
 ) -> Result<String, EngineError> {
     let img0 = decode_data_url_to_image(&req.image_data_url)?;
-    let img = apply_pre_color_adjustments(&img0, req.pre_contrast, req.pre_saturation, req.pre_hue_degrees);
+    let inv = apply_invert_prefilter(&img0, req.invert_colors.unwrap_or(false));
+    let night = apply_night_vision_prefilter(&inv, req.night_vision_prefilter.unwrap_or(false));
+    let img = apply_pre_color_adjustments(&night, req.pre_contrast, req.pre_saturation, req.pre_hue_degrees);
     let (gw, gh) = resolve_grid(&req);
     let mut grid = resize_to_grid(&img, gw, gh);
     grid = apply_denoise_rgba(grid, req.denoise_sigma);
     apply_tone_gamma(&mut grid, req.tone_gamma);
     let algo = get_algorithm_by_name(req.algorithm.as_str());
-    let pal_slice: Vec<[u8; 3]> = palette_colors;
+    let mut pal_slice: Vec<[u8; 3]> = palette_colors;
+    let add_black = req.add_black_to_palette.unwrap_or(false);
+    let add_white = req.add_white_to_palette.unwrap_or(false);
+    if add_black || add_white {
+        maybe_modify_palette(&mut pal_slice, add_black, add_white);
+    }
     match req.algorithm.as_str() {
         "Floyd-Steinberg" | "Floyd–Steinberg" => FloydSteinberg.process(&mut grid, &pal_slice),
         "Bayer" => Bayer.process(&mut grid, &pal_slice),
@@ -322,13 +381,20 @@ pub fn render_base_png_with_palette(
     palette_colors: Vec<[u8; 3]>,
 ) -> Result<String, EngineError> {
     let img0 = decode_data_url_to_image(&req.image_data_url)?;
-    let img = apply_pre_color_adjustments(&img0, req.pre_contrast, req.pre_saturation, req.pre_hue_degrees);
+    let inv = apply_invert_prefilter(&img0, req.invert_colors.unwrap_or(false));
+    let night = apply_night_vision_prefilter(&inv, req.night_vision_prefilter.unwrap_or(false));
+    let img = apply_pre_color_adjustments(&night, req.pre_contrast, req.pre_saturation, req.pre_hue_degrees);
     let (gw, gh) = resolve_grid(&req);
     let mut grid = resize_to_grid(&img, gw, gh);
     grid = apply_denoise_rgba(grid, req.denoise_sigma);
     apply_tone_gamma(&mut grid, req.tone_gamma);
     let algo = get_algorithm_by_name(req.algorithm.as_str());
-    let pal_slice: Vec<[u8; 3]> = palette_colors;
+    let mut pal_slice: Vec<[u8; 3]> = palette_colors;
+    let add_black = req.add_black_to_palette.unwrap_or(false);
+    let add_white = req.add_white_to_palette.unwrap_or(false);
+    if add_black || add_white {
+        maybe_modify_palette(&mut pal_slice, add_black, add_white);
+    }
     match req.algorithm.as_str() {
         "Floyd-Steinberg" | "Floyd–Steinberg" => FloydSteinberg.process(&mut grid, &pal_slice),
         "Bayer" => Bayer.process(&mut grid, &pal_slice),

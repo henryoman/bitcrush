@@ -34,13 +34,15 @@ async function loadPalettes() {
   const list = (await invoke("list_palettes")) as PaletteTuple[];
   const sel = qs<HTMLSelectElement>("#palette");
   if (!sel) return list;
+  // sort by color count ascending
+  const sorted = [...list].sort((a, b) => (a[1]?.length || 0) - (b[1]?.length || 0));
   sel.innerHTML = "";
-  for (const [name] of list) {
+  for (const [name] of sorted) {
     const opt = document.createElement("option");
     opt.textContent = name;
     sel.appendChild(opt);
   }
-  return list;
+  return sorted;
 }
 
 window.addEventListener("DOMContentLoaded", async () => {
@@ -69,6 +71,13 @@ window.addEventListener("DOMContentLoaded", async () => {
   const btnGen = qs<HTMLButtonElement>("#generate");
   const btnUpscaled = qs<HTMLButtonElement>("#download-upscaled");
   const btnBase = qs<HTMLButtonElement>("#download-base");
+  const optNightVision = qs<HTMLInputElement>("#optNightVision");
+  const optAddBlack = qs<HTMLInputElement>("#optAddBlack");
+  const optAddWhite = qs<HTMLInputElement>("#optAddWhite");
+  const optInvert = qs<HTMLInputElement>("#optInvert");
+  const exportScale = qs<HTMLSelectElement>("#exportScale");
+  const exportFilter = qs<HTMLSelectElement>("#exportFilter");
+  const exportClamp = qs<HTMLInputElement>("#exportClamp");
 
   // Filters page elements
   const fDropzone = qs<HTMLDivElement>("#filters-dropzone");
@@ -109,8 +118,7 @@ window.addEventListener("DOMContentLoaded", async () => {
   }
 
   function markDirty() {
-    // Do not clear the current preview on control changes.
-    // Only invalidate cached downloads so user sees prior render until they re-render.
+    // Clear cached outputs; keep current image until re-render
     upscaledDataURL = null;
     baseDataURL = null;
     updateButtons();
@@ -169,6 +177,10 @@ window.addEventListener("DOMContentLoaded", async () => {
         pre_contrast: preContrast ? Number(preContrast.value) : undefined,
         pre_saturation: preSaturation ? Number(preSaturation.value) : undefined,
         pre_hue_degrees: preHue ? Number(preHue.value) : undefined,
+        add_black_to_palette: optAddBlack?.checked || false,
+        add_white_to_palette: optAddWhite?.checked || false,
+        invert_colors: optInvert?.checked || false,
+        night_vision_prefilter: optNightVision?.checked || false,
       };
       const up = (await invoke("render_preview", { req })) as string;
       if (mySeq !== renderCounter) return; // stale
@@ -246,6 +258,13 @@ window.addEventListener("DOMContentLoaded", async () => {
           pre_contrast: preContrast ? Number(preContrast.value) : undefined,
           pre_saturation: preSaturation ? Number(preSaturation.value) : undefined,
           pre_hue_degrees: preHue ? Number(preHue.value) : undefined,
+          add_black_to_palette: optAddBlack?.checked || false,
+          add_white_to_palette: optAddWhite?.checked || false,
+          invert_colors: optInvert?.checked || false,
+          night_vision_prefilter: optNightVision?.checked || false,
+          export_scale_factor: exportScale ? Number(exportScale.value) : 2,
+          export_filter: exportFilter?.value || "nearest",
+          export_clamp_2000: exportClamp?.checked ?? true,
         };
         const hi = (await invoke("render_preview", { req })) as string;
         downloadDataURL(hi, "bitcrush-preview-2000.png");
@@ -295,6 +314,10 @@ window.addEventListener("DOMContentLoaded", async () => {
   gridSel?.addEventListener("change", markDirty);
   tone?.addEventListener("input", markDirty);
   denoise?.addEventListener("input", markDirty);
+  optAddBlack?.addEventListener("change", markDirty);
+  optAddWhite?.addEventListener("change", markDirty);
+  optInvert?.addEventListener("change", markDirty);
+  optNightVision?.addEventListener("change", markDirty);
 
   // ---------------- Filters page wiring ----------------
   let filtersImage: string | null = null;

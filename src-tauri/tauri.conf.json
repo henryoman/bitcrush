@@ -13,9 +13,9 @@
     "withGlobalTauri": true,
     "windows": [
       {
-        "title": "bitcrush",
-        "width": 1000,
-        "height": 800,
+        "title": "",
+        "width": 1440,
+        "height": 1080,
         "titleBarStyle": "Overlay"
       }
     ],
