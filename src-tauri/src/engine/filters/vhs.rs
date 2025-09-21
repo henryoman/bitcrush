@@ -448,6 +448,96 @@ pub fn apply_vhs_realistic3_mix2(src: &RgbaImage) -> RgbaImage {
     work
 }
 
+/// VHS 8: Combine VHS4 baseline with a toned-down taste of VHS3
+/// - Start from VHS4 (realistic NTSC-style smear and CRT cues)
+/// - Re-saturate slightly so colors are not as washed out as VHS4
+/// - Add mild chromatic aberration (less than VHS3)
+/// - Add a very gentle raster jitter (smaller wiggle than VHS3)
+pub fn apply_vhs8(src: &RgbaImage) -> RgbaImage {
+    // Custom baseline: like VHS4 but with less initial chroma fade
+    // (increase analog chroma retention vs VHS4's sat=0.60)
+    let (w, h) = src.dimensions();
+    let wu = w as usize;
+    let hu = h as usize;
+    let mut y_buf = vec![0.0f32; wu * hu];
+    let mut u_buf = vec![0.0f32; wu * hu];
+    let mut v_buf = vec![0.0f32; wu * hu];
+    let idx = |x: usize, y: usize| -> usize { y * wu + x };
+    // RGB -> YUV (approx BT.601)
+    for yy in 0..hu {
+        for xx in 0..wu {
+            let p = src.get_pixel(xx as u32, yy as u32).0;
+            let r = p[0] as f32;
+            let g = p[1] as f32;
+            let b = p[2] as f32;
+            let y = 0.299 * r + 0.587 * g + 0.114 * b;
+            let u = (b - y) * 0.492;
+            let v = (r - y) * 0.877;
+            let i = idx(xx, yy);
+            y_buf[i] = y;
+            u_buf[i] = u;
+            v_buf[i] = v;
+        }
+    }
+    // Horizontal chroma smear (simulate low chroma bandwidth)
+    let radius: i32 = 4;
+    let mut u_s = vec![0.0f32; wu * hu];
+    let mut v_s = vec![0.0f32; wu * hu];
+    let norm = 1.0 / (2 * radius + 1) as f32;
+    for yy in 0..hu {
+        for xx in 0..wu {
+            let mut su = 0.0f32;
+            let mut sv = 0.0f32;
+            for dx in -radius..=radius {
+                let x = (xx as i32 + dx).clamp(0, (wu - 1) as i32) as usize;
+                let i = idx(x, yy);
+                su += u_buf[i];
+                sv += v_buf[i];
+            }
+            let i = idx(xx, yy);
+            u_s[i] = su * norm;
+            v_s[i] = sv * norm;
+        }
+    }
+    // Less desaturation than VHS4 to keep more original color
+    let sat = 0.68f32; // VHS4 used 0.60
+    for i in 0..u_s.len() {
+        u_s[i] *= sat;
+        v_s[i] *= sat * 0.96; // preserve slight tint balance
+    }
+    // Reconstruct RGB
+    let mut out = src.clone();
+    for yy in 0..hu {
+        for xx in 0..wu {
+            let i = idx(xx, yy);
+            let y = y_buf[i];
+            let u = u_s[i];
+            let v = v_s[i];
+            let r = y + v / 0.877;
+            let b = y + u / 0.492;
+            let g = (y - 0.299 * r - 0.114 * b) / 0.587;
+            let r8 = clamp_u8(r);
+            let g8 = clamp_u8(g);
+            let b8 = clamp_u8(b);
+            let a = src.get_pixel(xx as u32, yy as u32).0[3];
+            *out.get_pixel_mut(xx as u32, yy as u32) = Rgba([r8, g8, b8, a]);
+        }
+    }
+    // Gentle CRT cues (same as VHS4)
+    let mut work = out;
+    work = rasterize_lines(&work, 240);
+    scanlines(&mut work);
+    work = box_blur(&work, 1);
+    grain(&mut work, 1.4);
+    luma_dither(&mut work, 0.8);
+    vignette(&mut work);
+    // Turn down post-saturation so colored lines are not over-emphasized
+    adjust_saturation(&mut work, 1.06);
+    // Subtle CA like VHS3 but toned down (VHS3 uses 3)
+    let work = chromatic_aberration_shift(&work, 2);
+    work
+}
+
 // Map older names to a clean set VHS 1..7 presets
 pub fn apply_vhs4(src: &RgbaImage) -> RgbaImage { apply_vhs_realistic(src) }
 pub fn apply_vhs5(src: &RgbaImage) -> RgbaImage { apply_vhs_realistic2(src) }

@@ -109,9 +109,10 @@ window.addEventListener("DOMContentLoaded", async () => {
   }
 
   function markDirty() {
+    // Do not clear the current preview on control changes.
+    // Only invalidate cached downloads so user sees prior render until they re-render.
     upscaledDataURL = null;
     baseDataURL = null;
-    setPreview(null);
     updateButtons();
   }
 
@@ -193,7 +194,9 @@ window.addEventListener("DOMContentLoaded", async () => {
         thumb.style.display = "";
         dropHint.style.display = "none";
       }
+      // New image selected: clear preview so user knows to render with new settings
       markDirty();
+      setPreview(null);
     };
     reader.readAsDataURL(file);
   }

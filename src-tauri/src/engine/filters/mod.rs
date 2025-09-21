@@ -73,7 +73,7 @@ pub fn render_filters_preview_png(req: FilterChainRequest) -> Result<String, Fil
         base
     };
     let mut frame = work;
-    // Router: VHS variants (VHS 1..7)
+    // Router: VHS variants (VHS 1..8)
     for step in &req.steps {
         if !step.enabled { continue; }
         let name = step.name.to_ascii_uppercase();
@@ -85,6 +85,7 @@ pub fn render_filters_preview_png(req: FilterChainRequest) -> Result<String, Fil
             "VHS 5" => { frame = vhs::apply_vhs5(&frame); }
             "VHS 6" => { frame = vhs::apply_vhs6(&frame); }
             "VHS 7" => { frame = vhs::apply_vhs7(&frame); }
+            "VHS 8" => { frame = vhs::apply_vhs8(&frame); }
             _ => {}
         }
     }
