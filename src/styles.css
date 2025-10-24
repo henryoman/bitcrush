@@ -247,7 +247,7 @@ input[type="range"]::-moz-range-thumb {
 .actions { @apply flex gap-2 flex-wrap; }
 /* Place actions as a full-width row at the end of the grid flow */
 .layout > .actions { grid-column: 1 / -1; margin-top: 8px; }
-.preview-panel { height: 70vh; min-height: 560px; display: flex; align-items: center; justify-content: center; }
+.preview-panel { height: 85vh; min-height: 800px; display: flex; align-items: center; justify-content: center; }
 
 .btn { @apply relative inline-flex items-center justify-center select-none border px-[14px] py-[10px] font-semibold text-[0.95rem] leading-none min-h-[36px];
   transition: background-color 120ms ease, color 120ms ease, box-shadow 120ms ease, transform 60ms ease;

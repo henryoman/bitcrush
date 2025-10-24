@@ -5,6 +5,38 @@ type PaletteTuple = [string, number[][]];
 
 const qs = <T extends HTMLElement>(sel: string) => document.querySelector(sel) as T | null;
 
+/**
+ * Loads an image file and returns a properly-oriented data URL.
+ * This fixes issues where images with EXIF orientation metadata appear rotated.
+ */
+async function loadImageWithCorrectOrientation(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const dataUrl = String(e.target?.result || "");
+      const img = new Image();
+      img.onload = () => {
+        // Create canvas and draw image (browsers auto-apply EXIF orientation)
+        const canvas = document.createElement("canvas");
+        canvas.width = img.naturalWidth;
+        canvas.height = img.naturalHeight;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) {
+          reject(new Error("Could not get canvas context"));
+          return;
+        }
+        ctx.drawImage(img, 0, 0);
+        // Convert back to data URL with correct orientation
+        resolve(canvas.toDataURL("image/png"));
+      };
+      img.onerror = () => reject(new Error("Failed to load image"));
+      img.src = dataUrl;
+    };
+    reader.onerror = () => reject(new Error("Failed to read file"));
+    reader.readAsDataURL(file);
+  });
+}
+
 function enable(el: HTMLElement | null, on: boolean) {
   if (!el) return;
   (el as HTMLButtonElement).disabled = !on;
@@ -171,7 +203,7 @@ window.addEventListener("DOMContentLoaded", async () => {
         grid_value: val,
         algorithm: algoSel.value,
         palette_name: paletteSel.value,
-        display_size: 800,
+        display_size: 1000,
         tone_gamma: tone ? Number(tone.value) : undefined,
         denoise_sigma: denoise ? Number(denoise.value) : undefined,
         pre_contrast: preContrast ? Number(preContrast.value) : undefined,
@@ -197,10 +229,9 @@ window.addEventListener("DOMContentLoaded", async () => {
 
   // Live auto-render disabled per request; only render on Pixelate button press
 
-  function handleFile(file: File) {
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      selectedImage = String(e.target?.result || "");
+  async function handleFile(file: File) {
+    try {
+      selectedImage = await loadImageWithCorrectOrientation(file);
       if (thumb && dropHint) {
         thumb.src = selectedImage;
         thumb.style.display = "";
@@ -209,8 +240,10 @@ window.addEventListener("DOMContentLoaded", async () => {
       // New image selected: clear preview so user knows to render with new settings
       markDirty();
       setPreview(null);
-    };
-    reader.readAsDataURL(file);
+    } catch (err) {
+      console.error("Failed to load image:", err);
+      showError("Failed to load image");
+    }
   }
 
   dropzone?.addEventListener("click", () => fileInput?.click());
@@ -342,18 +375,19 @@ window.addEventListener("DOMContentLoaded", async () => {
     fOutputEmpty.style.display = "none";
   }
 
-  function filtersHandleFile(file: File) {
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      filtersImage = String(e.target?.result || "");
+  async function filtersHandleFile(file: File) {
+    try {
+      filtersImage = await loadImageWithCorrectOrientation(file);
       if (fThumb && fDropHint) {
         fThumb.src = filtersImage;
         fThumb.style.display = "";
         fDropHint.style.display = "none";
       }
       filtersSetPreview(null);
-    };
-    reader.readAsDataURL(file);
+    } catch (err) {
+      console.error("Failed to load image:", err);
+      filtersShowError("Failed to load image");
+    }
   }
 
   async function renderFiltersNow() {
@@ -362,7 +396,7 @@ window.addEventListener("DOMContentLoaded", async () => {
       const kind = (fKind?.value || "VHS").trim();
       const req = {
         image_data_url: filtersImage,
-        display_size: 800,
+        display_size: 1000,
         steps: [{ name: kind, amount: 1.0, enabled: true }],
       };
       const up = (await invoke("render_filters_chain_preview", { req })) as string;
