@@ -30,12 +30,20 @@ fn decode_data_url_to_image(data_url: &str) -> Result<DynamicImage, FilterError>
 }
 
 fn encode_png_base64(img: &RgbaImage) -> Result<String, FilterError> {
-    let mut buf = Cursor::new(Vec::new());
+    // Pre-allocate buffer with estimated size
+    let estimated_size = (img.width() as usize * img.height() as usize * 4 * 3) / 2;
+    let mut buf = Cursor::new(Vec::with_capacity(estimated_size));
     DynamicImage::ImageRgba8(img.clone()).write_to(&mut buf, ImageFormat::Png)?;
+    let png_bytes = buf.into_inner();
+    
+    // Pre-allocate base64 string
+    let b64_capacity = (png_bytes.len() * 4 + 2) / 3;
     use base64::engine::general_purpose::STANDARD as B64;
     use base64::Engine;
-    let b64 = B64.encode(buf.into_inner());
-    Ok(format!("data:image/png;base64,{}", b64))
+    let mut b64 = String::with_capacity(b64_capacity + 22);
+    b64.push_str("data:image/png;base64,");
+    B64.encode_string(&png_bytes, &mut b64);
+    Ok(b64)
 }
 
 fn upscale_center_to(img: &RgbaImage, display_size: u32) -> RgbaImage {

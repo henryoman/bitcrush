@@ -1,4 +1,5 @@
 use image::Rgba;
+use rayon::prelude::*;
 
 use crate::engine::color::{brightness, lab_distance, rgb_to_lab};
 
@@ -34,21 +35,34 @@ impl Algorithm for Bayer {
         if palette.is_empty() { return; }
         let w = img.width();
         let h = img.height();
-        for y in 0..h {
-            for x in 0..w {
-                let p = img.get_pixel(x,y).0;
-                let (r,g,b,a) = (p[0], p[1], p[2], p[3]);
-                let (c1, c2) = find_two_closest(r,g,b,palette);
-                let br = brightness(r,g,b);
-                let br1 = brightness(c1[0],c1[1],c1[2]);
-                let br2 = brightness(c2[0],c2[1],c2[2]);
-                let bayer_val = (BAYER_4X4[(y%4) as usize][(x%4) as usize] as f32) / 16.0;
-                let diff1 = (br - br1).abs();
-                let diff2 = (br - br2).abs();
-                let chosen = if bayer_val < diff1 && diff2 < diff1 * 1.5 { c2 } else { c1 };
-                img.put_pixel(x,y,Rgba([chosen[0], chosen[1], chosen[2], a]));
-            }
-        }
+        let pixels = img.as_mut();
+        
+        // Process rows in parallel
+        pixels.par_chunks_mut((w * 4) as usize)
+            .enumerate()
+            .for_each(|(y_idx, row)| {
+                let y = y_idx as u32;
+                for x in 0..w {
+                    let idx = (x * 4) as usize;
+                    let r = row[idx];
+                    let g = row[idx + 1];
+                    let b = row[idx + 2];
+                    let a = row[idx + 3];
+                    
+                    let (c1, c2) = find_two_closest(r, g, b, palette);
+                    let br = brightness(r, g, b);
+                    let br1 = brightness(c1[0], c1[1], c1[2]);
+                    let br2 = brightness(c2[0], c2[1], c2[2]);
+                    let bayer_val = (BAYER_4X4[(y%4) as usize][(x%4) as usize] as f32) / 16.0;
+                    let diff1 = (br - br1).abs();
+                    let diff2 = (br - br2).abs();
+                    let chosen = if bayer_val < diff1 && diff2 < diff1 * 1.5 { c2 } else { c1 };
+                    row[idx] = chosen[0];
+                    row[idx + 1] = chosen[1];
+                    row[idx + 2] = chosen[2];
+                    // a stays the same
+                }
+            });
     }
 }
 

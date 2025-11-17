@@ -184,13 +184,21 @@ fn apply_denoise_rgba(img: RgbaImage, denoise_sigma: Option<f32>) -> RgbaImage {
 
 fn parse_grid_value(value: &str) -> Option<(u32, u32)> {
     let s = value.trim().to_lowercase();
+    if s.is_empty() {
+        return None;
+    }
     if let Some((a, b)) = s.split_once('x') {
         let w = a.trim().parse::<u32>().ok()?;
         let h = b.trim().parse::<u32>().ok()?;
-        return Some((w.max(1), h.max(1)));
+        if w == 0 || h == 0 {
+            return None;
+        }
+        return Some((w, h));
     }
     if let Ok(n) = s.parse::<u32>() {
-        let n = n.max(1);
+        if n == 0 {
+            return None;
+        }
         return Some((n, n));
     }
     None
@@ -202,8 +210,9 @@ fn resolve_grid(req: &RenderRequest) -> (u32, u32) {
             return (w, h);
         }
     }
-    let w = req.grid_width.max(1);
-    let h = req.grid_height.max(1);
+    // Fallback: use explicit grid_width/grid_height if both are > 0, otherwise default to 32x32
+    let w = if req.grid_width > 0 { req.grid_width } else { 32 };
+    let h = if req.grid_height > 0 { req.grid_height } else { 32 };
     (w, h)
 }
 
@@ -227,12 +236,20 @@ fn upscale_center_to(img: &RgbaImage, display_size: u32) -> RgbaImage {
 }
 
 fn encode_png_base64(img: &RgbaImage) -> Result<String, EngineError> {
-    let mut buf = Cursor::new(Vec::new());
+    // Pre-allocate buffer with estimated size (width * height * 4 * 1.5 for PNG compression overhead)
+    let estimated_size = (img.width() as usize * img.height() as usize * 4 * 3) / 2;
+    let mut buf = Cursor::new(Vec::with_capacity(estimated_size));
     DynamicImage::ImageRgba8(img.clone()).write_to(&mut buf, ImageFormat::Png)?;
+    let png_bytes = buf.into_inner();
+    
+    // Pre-allocate base64 string with estimated size (4/3 of input size)
+    let b64_capacity = (png_bytes.len() * 4 + 2) / 3;
     use base64::engine::general_purpose::STANDARD as B64;
     use base64::Engine;
-    let b64 = B64.encode(buf.into_inner());
-    Ok(format!("data:image/png;base64,{}", b64))
+    let mut b64 = String::with_capacity(b64_capacity + 22); // +22 for "data:image/png;base64," prefix
+    b64.push_str("data:image/png;base64,");
+    B64.encode_string(&png_bytes, &mut b64);
+    Ok(b64)
 }
 
 fn maybe_modify_palette(colors: &mut Vec<[u8; 3]>, add_black: bool, add_white: bool) {

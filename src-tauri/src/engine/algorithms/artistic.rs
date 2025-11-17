@@ -1,4 +1,5 @@
 use image::Rgba;
+use rayon::prelude::*;
 
 use crate::engine::color::rgb_to_lab;
 
@@ -27,17 +28,30 @@ impl Algorithm for Artistic {
         if palette.is_empty() { return; }
         let w = img.width();
         let h = img.height();
-        for y in 0..h {
-            for x in 0..w {
-                let p = img.get_pixel(x,y).0;
-                let (r,g,b,a) = (p[0], p[1], p[2], p[3]);
-                let er = (((r as i16 - 128) as f32) * 1.2 + 128.0).clamp(0.0, 255.0) as u8;
-                let eg = (((g as i16 - 128) as f32) * 1.2 + 128.0).clamp(0.0, 255.0) as u8;
-                let eb = (((b as i16 - 128) as f32) * 1.2 + 128.0).clamp(0.0, 255.0) as u8;
-                let c = find_closest_artistic(er,eg,eb,palette,x,y);
-                img.put_pixel(x,y,Rgba([c[0],c[1],c[2],a]));
-            }
-        }
+        let pixels = img.as_mut();
+        
+        // Process rows in parallel
+        pixels.par_chunks_mut((w * 4) as usize)
+            .enumerate()
+            .for_each(|(y_idx, row)| {
+                let y = y_idx as u32;
+                for x in 0..w {
+                    let idx = (x * 4) as usize;
+                    let r = row[idx];
+                    let g = row[idx + 1];
+                    let b = row[idx + 2];
+                    let a = row[idx + 3];
+                    
+                    let er = (((r as i16 - 128) as f32) * 1.2 + 128.0).clamp(0.0, 255.0) as u8;
+                    let eg = (((g as i16 - 128) as f32) * 1.2 + 128.0).clamp(0.0, 255.0) as u8;
+                    let eb = (((b as i16 - 128) as f32) * 1.2 + 128.0).clamp(0.0, 255.0) as u8;
+                    let c = find_closest_artistic(er, eg, eb, palette, x, y);
+                    row[idx] = c[0];
+                    row[idx + 1] = c[1];
+                    row[idx + 2] = c[2];
+                    // a stays the same
+                }
+            });
     }
 }
 
